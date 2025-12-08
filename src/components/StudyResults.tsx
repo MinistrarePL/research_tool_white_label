@@ -5,6 +5,7 @@ import { Card, Button, Badge, Table, TableHead, TableHeadCell, TableBody, TableR
 import { HiDownload } from "react-icons/hi";
 import CardSortingResults from "@/components/card-sorting/CardSortingResults";
 import FirstClickResults from "@/components/first-click/FirstClickResults";
+import TreeTestingResults from "@/components/tree-testing/TreeTestingResults";
 
 type Study = {
   id: string;
@@ -193,43 +194,7 @@ export default function StudyResults({ study }: { study: Study }) {
       )}
 
       {study.type === "TREE_TESTING" && (
-        <Card>
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
-            Tree Testing Results
-          </h4>
-          {study.tasks.map((task) => {
-            const taskResults = completedParticipants.flatMap((p) =>
-              p.treeTestResults.filter((r) => r.taskId === task.id)
-            );
-            const correctCount = taskResults.filter((r) => r.isCorrect).length;
-            const avgTime =
-              taskResults.length > 0
-                ? Math.round(
-                    taskResults.reduce((sum, r) => sum + r.timeSpentMs, 0) /
-                      taskResults.length
-                  )
-                : 0;
-
-            return (
-              <div key={task.id} className="mb-6 last:mb-0">
-                <h5 className="font-medium text-gray-900 dark:text-white mb-2">
-                  {task.question}
-                </h5>
-                <div className="flex gap-4 text-sm">
-                  <Badge color="success">
-                    Success rate: {((correctCount / taskResults.length) * 100).toFixed(0)}%
-                  </Badge>
-                  <Badge color="gray">
-                    Avg. time: {(avgTime / 1000).toFixed(1)}s
-                  </Badge>
-                  <Badge color="blue">
-                    Responses: {taskResults.length}
-                  </Badge>
-                </div>
-              </div>
-            );
-          })}
-        </Card>
+        <TreeTestingResults study={study} />
       )}
 
       {study.type === "FIRST_CLICK" && (

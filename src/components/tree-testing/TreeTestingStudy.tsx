@@ -43,6 +43,7 @@ export default function TreeTestingStudy({
   const [results, setResults] = useState<TaskResult[]>([]);
   const [currentPath, setCurrentPath] = useState<string[]>([]);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<number>(Date.now());
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,6 +54,7 @@ export default function TreeTestingStudy({
     setStartTime(Date.now());
     setCurrentPath([]);
     setExpandedNodes(new Set());
+    setSelectedNodeId(null);
   }, [currentTaskIndex]);
 
   const rootNodes = study.treeNodes.filter((n) => !n.parentId);
@@ -78,13 +80,25 @@ export default function TreeTestingStudy({
   };
 
   const selectNode = (nodeId: string) => {
+    // Just mark as selected, don't submit yet
+    setSelectedNodeId(nodeId);
+    
+    // Update path to include selected node if not already there
+    if (!currentPath.includes(nodeId)) {
+      setCurrentPath([...currentPath, nodeId]);
+    }
+  };
+
+  const confirmSelection = () => {
+    if (!selectedNodeId) return;
+
     const timeSpent = Date.now() - startTime;
-    const isCorrect = currentTask.correctNodeId === nodeId;
+    const isCorrect = currentTask.correctNodeId === selectedNodeId;
 
     const result: TaskResult = {
       taskId: currentTask.id,
-      selectedPath: [...currentPath, nodeId],
-      selectedNodeId: nodeId,
+      selectedPath: currentPath,
+      selectedNodeId: selectedNodeId,
       isCorrect,
       timeSpentMs: timeSpent,
     };
@@ -117,11 +131,16 @@ export default function TreeTestingStudy({
     const children = getChildren(node.id);
     const hasChildren = children.length > 0;
     const isExpanded = expandedNodes.has(node.id);
+    const isSelected = selectedNodeId === node.id;
 
     return (
       <div key={node.id}>
         <div
-          className="flex items-center gap-2 py-2 px-3 hover:bg-gray-100 dark:hover:bg-gray-700 rounded cursor-pointer transition-colors"
+          className={`flex items-center gap-2 py-2 px-3 rounded cursor-pointer transition-colors ${
+            isSelected 
+              ? "bg-blue-100 dark:bg-blue-900 border-2 border-blue-500" 
+              : "hover:bg-gray-100 dark:hover:bg-gray-700"
+          }`}
           style={{ paddingLeft: `${depth * 24 + 12}px` }}
         >
           {hasChildren ? (
@@ -139,18 +158,19 @@ export default function TreeTestingStudy({
             <span className="w-7" />
           )}
           <span
-            className="flex-1 text-gray-900 dark:text-white"
-            onClick={() => toggleExpand(node.id)}
+            className={`flex-1 ${isSelected ? "text-blue-900 dark:text-blue-100 font-medium" : "text-gray-900 dark:text-white"}`}
+            onClick={() => selectNode(node.id)}
           >
             {node.label}
           </span>
           <Button
             size="xs"
-            color="success"
+            color={isSelected ? "blue" : "light"}
+            outline={!isSelected}
             onClick={() => selectNode(node.id)}
           >
             <HiCheck className="h-4 w-4 mr-1" />
-            Select
+            {isSelected ? "Selected" : "Select"}
           </Button>
         </div>
         {isExpanded && children.map((child) => renderNode(child, depth + 1))}
@@ -182,7 +202,7 @@ export default function TreeTestingStudy({
           {currentTask.question}
         </h2>
         <p className="text-gray-500 dark:text-gray-400 text-sm mt-2">
-          Navigate through the tree and click "Select" when you find the answer.
+          Navigate through the tree and click "Select" to choose an item, then confirm your selection.
         </p>
       </Card>
 
@@ -208,6 +228,33 @@ export default function TreeTestingStudy({
           {rootNodes.map((node) => renderNode(node))}
         </div>
       </Card>
+
+      {/* Selected Item Display & Confirm Button */}
+      {selectedNodeId && (
+        <div className="mt-6">
+          <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">
+                  Selected Item:
+                </p>
+                <p className="text-lg text-blue-900 dark:text-blue-100 font-semibold">
+                  {study.treeNodes.find(n => n.id === selectedNodeId)?.label}
+                </p>
+              </div>
+              <Button
+                size="lg"
+                color="blue"
+                onClick={confirmSelection}
+                disabled={submitting}
+              >
+                <HiCheck className="h-5 w-5 mr-2" />
+                {submitting ? "Submitting..." : "Confirm Selection"}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
