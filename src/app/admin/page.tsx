@@ -1,0 +1,229 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Button, Card, Badge, Modal, ModalHeader, ModalBody, Label, TextInput, Select, Textarea, Spinner } from "flowbite-react";
+import Link from "next/link";
+import { HiPlus, HiEye, HiTrash, HiClipboard } from "react-icons/hi";
+
+type Study = {
+  id: string;
+  title: string;
+  description: string | null;
+  type: "CARD_SORTING" | "TREE_TESTING" | "FIRST_CLICK";
+  status: "DRAFT" | "ACTIVE" | "CLOSED";
+  createdAt: string;
+  _count: {
+    participants: number;
+  };
+};
+
+const studyTypeLabels = {
+  CARD_SORTING: "Card Sorting",
+  TREE_TESTING: "Tree Testing",
+  FIRST_CLICK: "First Click",
+};
+
+const studyTypeColors = {
+  CARD_SORTING: "purple",
+  TREE_TESTING: "blue",
+  FIRST_CLICK: "green",
+} as const;
+
+const statusColors = {
+  DRAFT: "gray",
+  ACTIVE: "success",
+  CLOSED: "failure",
+} as const;
+
+export default function AdminDashboard() {
+  const [studies, setStudies] = useState<Study[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [formData, setFormData] = useState({
+    title: "",
+    description: "",
+    type: "CARD_SORTING" as Study["type"],
+  });
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    fetchStudies();
+  }, []);
+
+  const fetchStudies = async () => {
+    const res = await fetch("/api/studies");
+    const data = await res.json();
+    setStudies(data);
+    setLoading(false);
+  };
+
+  const createStudy = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+    const res = await fetch("/api/studies", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData),
+    });
+    if (res.ok) {
+      setShowModal(false);
+      setFormData({ title: "", description: "", type: "CARD_SORTING" });
+      fetchStudies();
+    }
+    setCreating(false);
+  };
+
+  const deleteStudy = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this study?")) return;
+    await fetch(`/api/studies/${id}`, { method: "DELETE" });
+    fetchStudies();
+  };
+
+  const copyLink = (id: string) => {
+    const url = `${window.location.origin}/study/${id}`;
+    navigator.clipboard.writeText(url);
+    alert("Link copied to clipboard!");
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Spinner size="xl" />
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Your Studies
+        </h1>
+        <Button onClick={() => setShowModal(true)} color="blue">
+          <HiPlus className="mr-2 h-5 w-5" />
+          New Study
+        </Button>
+      </div>
+
+      {studies.length === 0 ? (
+        <Card className="text-center py-12">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+            No studies yet
+          </h3>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
+            Create your first study to start collecting user insights.
+          </p>
+          <Button onClick={() => setShowModal(true)} color="blue">
+            <HiPlus className="mr-2 h-5 w-5" />
+            Create Study
+          </Button>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {studies.map((study) => (
+            <Card key={study.id}>
+              <div className="flex justify-between items-start mb-2">
+                <Badge color={studyTypeColors[study.type]}>
+                  {studyTypeLabels[study.type]}
+                </Badge>
+                <Badge color={statusColors[study.status]}>{study.status}</Badge>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                {study.title}
+              </h3>
+              {study.description && (
+                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
+                  {study.description}
+                </p>
+              )}
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                {study._count.participants} participants
+              </p>
+              <div className="flex gap-2 mt-4">
+                <Button
+                  as={Link}
+                  href={`/admin/study/${study.id}`}
+                  size="sm"
+                  color="gray"
+                >
+                  <HiEye className="mr-1 h-4 w-4" />
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  color="gray"
+                  onClick={() => copyLink(study.id)}
+                >
+                  <HiClipboard className="mr-1 h-4 w-4" />
+                  Copy Link
+                </Button>
+                <Button
+                  size="sm"
+                  color="failure"
+                  onClick={() => deleteStudy(study.id)}
+                >
+                  <HiTrash className="h-4 w-4" />
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      <Modal show={showModal} onClose={() => setShowModal(false)}>
+        <ModalHeader>Create New Study</ModalHeader>
+        <ModalBody>
+          <form onSubmit={createStudy} className="flex flex-col gap-4">
+            <div>
+              <Label htmlFor="title" className="mb-2 block">Title</Label>
+              <TextInput
+                id="title"
+                value={formData.title}
+                onChange={(e) =>
+                  setFormData({ ...formData, title: e.target.value })
+                }
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="description" className="mb-2 block">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                rows={3}
+              />
+            </div>
+            <div>
+              <Label htmlFor="type" className="mb-2 block">Study Type</Label>
+              <Select
+                id="type"
+                value={formData.type}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    type: e.target.value as Study["type"],
+                  })
+                }
+              >
+                <option value="CARD_SORTING">Card Sorting</option>
+                <option value="TREE_TESTING">Tree Testing</option>
+                <option value="FIRST_CLICK">First Click Testing</option>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <Button color="gray" onClick={() => setShowModal(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={creating} color="blue">
+                {creating ? "Creating..." : "Create Study"}
+              </Button>
+            </div>
+          </form>
+        </ModalBody>
+      </Modal>
+    </div>
+  );
+}

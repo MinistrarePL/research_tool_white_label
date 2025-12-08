@@ -1,36 +1,91 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# UX Research Tool
 
-## Getting Started
+Self-hosted, open-source UX research platform for conducting:
+- **Card Sorting** - Understand how users categorize content
+- **Tree Testing** - Validate your information architecture
+- **First-Click Testing** - See where users click on your designs
 
-First, run the development server:
+## Features
 
+- 🎯 Three study types in one platform
+- 🔐 Simple admin authentication
+- 📊 Built-in results dashboard with exports (CSV/JSON)
+- 🗺️ Heatmap visualization for click data
+- 🐳 Docker-ready for easy deployment
+- 🌙 Dark mode support
+
+## Quick Start
+
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL (or Docker)
+- npm/yarn/pnpm
+
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repo-url>
+cd ux-research-tool
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your database URL and admin credentials
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Start PostgreSQL (using Docker):
+```bash
+docker compose up -d
+```
 
-## Learn More
+5. Initialize the database:
+```bash
+npm run db:push
+npm run db:seed
+```
 
-To learn more about Next.js, take a look at the following resources:
+6. Start the development server:
+```bash
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+7. Open [http://localhost:3000](http://localhost:3000)
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Environment Variables
 
-## Deploy on Vercel
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | PostgreSQL connection string | - |
+| `NEXTAUTH_URL` | Your app URL | `http://localhost:3000` |
+| `NEXTAUTH_SECRET` | Secret for JWT encryption | - |
+| `ADMIN_EMAIL` | Admin login email | `admin@example.com` |
+| `ADMIN_PASSWORD` | Admin login password | `admin123` |
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run db:push` - Push schema to database
+- `npm run db:seed` - Seed admin user
+- `npm run db:studio` - Open Prisma Studio
+
+## Tech Stack
+
+- **Framework**: Next.js 14 (App Router)
+- **UI**: Flowbite React + Tailwind CSS
+- **Database**: PostgreSQL + Prisma ORM
+- **Auth**: NextAuth.js
+- **Drag & Drop**: @dnd-kit
+
+## License
+
+MIT

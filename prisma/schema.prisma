@@ -1,0 +1,134 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  studies   Study[]
+}
+
+model Study {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  type        String    // CARD_SORTING, TREE_TESTING, FIRST_CLICK
+  status      String    @default("DRAFT") // DRAFT, ACTIVE, CLOSED
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Card Sorting specific
+  cards       Card[]
+  categories  Category[]
+  
+  // Tree Testing specific
+  treeNodes   TreeNode[]
+  tasks       Task[]
+  
+  // First Click specific
+  imageUrl    String?
+  
+  // Results
+  participants Participant[]
+}
+
+// Card Sorting Models
+model Card {
+  id        String   @id @default(cuid())
+  label     String
+  description String?
+  order     Int      @default(0)
+  studyId   String
+  study     Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  sortResults CardSortResult[]
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String
+  isUserCreated Boolean @default(false)
+  studyId     String
+  study       Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  sortResults CardSortResult[]
+}
+
+model CardSortResult {
+  id            String   @id @default(cuid())
+  cardId        String
+  card          Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryName  String?
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+// Tree Testing Models
+model TreeNode {
+  id        String     @id @default(cuid())
+  label     String
+  parentId  String?
+  parent    TreeNode?  @relation("TreeHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  TreeNode[] @relation("TreeHierarchy")
+  order     Int        @default(0)
+  studyId   String
+  study     Study      @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  correctForTasks Task[] @relation("CorrectAnswer")
+}
+
+model Task {
+  id              String   @id @default(cuid())
+  question        String
+  correctNodeId   String?
+  correctNode     TreeNode? @relation("CorrectAnswer", fields: [correctNodeId], references: [id], onDelete: SetNull)
+  order           Int      @default(0)
+  studyId         String
+  study           Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  treeTestResults TreeTestResult[]
+}
+
+model TreeTestResult {
+  id            String   @id @default(cuid())
+  taskId        String
+  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  selectedPath  String
+  selectedNodeId String?
+  isCorrect     Boolean
+  timeSpentMs   Int
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+// First Click Models
+model ClickResult {
+  id            String   @id @default(cuid())
+  x             Float
+  y             Float
+  timeToClickMs Int
+  participantId String
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+}
+
+// Participant
+model Participant {
+  id              String   @id @default(cuid())
+  sessionId       String   @unique @default(cuid())
+  studyId         String
+  study           Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  startedAt       DateTime @default(now())
+  completedAt     DateTime?
+  cardSortResults CardSortResult[]
+  treeTestResults TreeTestResult[]
+  clickResults    ClickResult[]
+}
