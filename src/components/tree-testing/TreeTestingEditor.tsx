@@ -238,112 +238,126 @@ export default function TreeTestingEditor({
     const isAddingChild = addingChildToNodeId === node.id;
 
     return (
-      <div key={node.id}>
-        <div
-          className="flex items-center gap-1 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded px-2 group"
-          style={{ paddingLeft: `${depth * 20 + 8}px` }}
+      <div key={node.id} className="mb-2" style={{ marginBottom: '8px' }}>
+        {/* Node container with border like Optimal Workshop */}
+        <div 
+          className="border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 shadow-sm"
+          style={{ marginLeft: `${depth * 24}px` }}
         >
-          {hasChildren || isAddingChild ? (
-            <button onClick={() => toggleExpand(node.id)} className="p-1">
-              {isExpanded ? (
-                <HiChevronDown className="h-4 w-4 text-gray-500" />
-              ) : (
-                <HiChevronRight className="h-4 w-4 text-gray-500" />
-              )}
-            </button>
-          ) : (
-            <span className="w-6" />
-          )}
-          
-          {isEditing ? (
-            <div className="flex-1 flex items-center gap-1">
-              <TextInput
-                value={editNodeLabel}
-                onChange={(e) => setEditNodeLabel(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") saveNode(node.id);
-                  if (e.key === "Escape") cancelEditingNode();
-                }}
-                autoFocus
-                sizing="sm"
-                className="flex-1"
-              />
-              <Button size="xs" color="success" onClick={() => saveNode(node.id)}>
-                <HiCheck className="h-3 w-3" />
-              </Button>
-              <Button size="xs" color="gray" onClick={cancelEditingNode}>
-                <HiX className="h-3 w-3" />
-              </Button>
-            </div>
-          ) : (
-            <>
-              <span className="flex-1 text-gray-900 dark:text-white">
-                {node.label}
-              </span>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                {!isActive && (
-                  <>
-                    <Button
-                      size="xs"
-                      color="light"
-                      onClick={() => startAddingChild(node.id)}
-                      title="Add child node"
-                    >
-                      <HiPlus className="h-3 w-3 text-gray-500" />
-                    </Button>
-                    <Button
-                      size="xs"
-                      color="light"
-                      onClick={() => startEditingNode(node)}
-                      title="Edit label"
-                    >
-                      <HiPencil className="h-3 w-3 text-gray-500" />
-                    </Button>
-                    <Button
-                      size="xs"
-                      color="light"
-                      onClick={() => deleteNode(node.id)}
-                      title="Delete"
-                    >
-                      <HiTrash className="h-3 w-3 text-gray-500 hover:text-red-500" />
-                    </Button>
-                  </>
+          <div className="flex items-center p-3 group">
+            {/* Expand/collapse button */}
+            {hasChildren ? (
+              <button 
+                onClick={() => toggleExpand(node.id)} 
+                className="mr-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+              >
+                {isExpanded ? (
+                  <HiChevronDown className="h-4 w-4 text-gray-600 dark:text-gray-400" />
+                ) : (
+                  <HiChevronRight className="h-4 w-4 text-gray-600 dark:text-gray-400" />
                 )}
+              </button>
+            ) : (
+              <span className="w-6 mr-2" />
+            )}
+
+            {/* Node content */}
+            {isEditing ? (
+              <div className="flex-1 flex items-center gap-2">
+                <TextInput
+                  value={editNodeLabel}
+                  onChange={(e) => setEditNodeLabel(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveNode(node.id);
+                    if (e.key === "Escape") cancelEditingNode();
+                  }}
+                  autoFocus
+                  sizing="sm"
+                  className="flex-1"
+                />
+                <Button size="xs" color="light" className="border-green-500 text-green-600 hover:bg-green-50" onClick={() => saveNode(node.id)}>
+                  <HiCheck className="h-3 w-3" />
+                </Button>
+                <Button size="xs" color="gray" onClick={cancelEditingNode}>
+                  <HiX className="h-3 w-3" />
+                </Button>
               </div>
-            </>
-          )}
+            ) : (
+              <>
+                <span className="flex-1 text-gray-900 dark:text-white font-medium">
+                  {node.label}
+                </span>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {!isActive && (
+                    <>
+                      <Button
+                        size="xs"
+                        color="light"
+                        onClick={() => startAddingChild(node.id)}
+                        title="Add child node"
+                      >
+                        <HiPlus className="h-3 w-3 text-gray-500" />
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        onClick={() => startEditingNode(node)}
+                        title="Edit label"
+                      >
+                        <HiPencil className="h-3 w-3 text-gray-500" />
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        onClick={() => deleteNode(node.id)}
+                        title="Delete"
+                      >
+                        <HiTrash className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
         
         {/* Adding child inline form */}
         {isAddingChild && isExpanded && (
-          <div
-            className="flex items-center gap-1 py-1 px-2"
-            style={{ paddingLeft: `${(depth + 1) * 20 + 8}px` }}
+          <div 
+            className="border border-dashed border-gray-400 dark:border-gray-500 rounded-lg bg-gray-50 dark:bg-gray-700"
+            style={{ marginLeft: `${(depth + 1) * 24}px`, marginTop: '8px' }}
           >
-            <span className="w-6" />
-            <TextInput
-              value={newChildLabel}
-              onChange={(e) => setNewChildLabel(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") addChildNode(node.id);
-                if (e.key === "Escape") cancelAddingChild();
-              }}
-              placeholder="New child node..."
-              autoFocus
-              sizing="sm"
-              className="flex-1 bg-white dark:bg-white text-gray-900 dark:text-gray-900"
-            />
-            <Button size="xs" color="success" onClick={() => addChildNode(node.id)} disabled={loading}>
-              <HiCheck className="h-3 w-3" />
-            </Button>
-            <Button size="xs" color="gray" onClick={cancelAddingChild}>
-              <HiX className="h-3 w-3" />
-            </Button>
+            <div className="flex items-center p-3 gap-2">
+              <span className="w-6" />
+              <TextInput
+                value={newChildLabel}
+                onChange={(e) => setNewChildLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addChildNode(node.id);
+                  if (e.key === "Escape") cancelAddingChild();
+                }}
+                placeholder="New child node..."
+                autoFocus
+                sizing="sm"
+                className="flex-1 bg-white dark:bg-white text-gray-900 dark:text-gray-900"
+              />
+              <Button size="xs" color="light" className="border-green-500 text-green-600 hover:bg-green-50" onClick={() => addChildNode(node.id)} disabled={loading}>
+                <HiCheck className="h-3 w-3" />
+              </Button>
+              <Button size="xs" color="gray" onClick={cancelAddingChild}>
+                <HiX className="h-3 w-3" />
+              </Button>
+            </div>
           </div>
         )}
         
-        {isExpanded &&
-          children.map((child) => renderNode(child, depth + 1))}
+        {/* Render children */}
+        {isExpanded && hasChildren && (
+          <div style={{ marginTop: '8px' }}>
+            {children.map((child) => renderNode(child, depth + 1))}
+          </div>
+        )}
       </div>
     );
   };
@@ -363,7 +377,7 @@ export default function TreeTestingEditor({
           </div>
         )}
 
-        <Card className="max-h-[400px] overflow-auto">
+        <Card className="min-h-[200px]">
           {rootNodes.length === 0 && addingChildToNodeId !== "root" ? (
             <div className="text-center py-4">
               <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
@@ -378,7 +392,7 @@ export default function TreeTestingEditor({
             </div>
           ) : (
             <>
-              {rootNodes.map((node) => renderNode(node))}
+              {rootNodes.map((node) => renderNode(node, 0))}
               
               {/* Add main category inline */}
               {addingChildToNodeId === "root" && (
@@ -395,7 +409,7 @@ export default function TreeTestingEditor({
                     sizing="sm"
                     className="flex-1"
                   />
-                  <Button size="xs" color="success" onClick={addRootNode} disabled={loading}>
+                  <Button size="xs" color="light" className="border-green-500 text-green-600 hover:bg-green-50" onClick={addRootNode} disabled={loading}>
                     <HiCheck className="h-3 w-3" />
                   </Button>
                   <Button size="xs" color="gray" onClick={cancelAddingChild}>
@@ -406,7 +420,7 @@ export default function TreeTestingEditor({
               
               {/* Button to add more root nodes */}
               {rootNodes.length > 0 && addingChildToNodeId !== "root" && !isActive && (
-                <div className="pt-2 pl-8">
+                <div className="pt-2" style={{ marginTop: '8px' }}>
                   <Button size="xs" color="light" onClick={() => setAddingChildToNodeId("root")}>
                     <HiPlus className="mr-1 h-3 w-3" />
                     Add main category

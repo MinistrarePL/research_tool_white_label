@@ -64,11 +64,11 @@ export default function DroppableCategory({
               className="flex-1"
               autoFocus
             />
-            <Button size="xs" color="success" onClick={onSaveEdit}>
-              <HiCheck className="h-4 w-4" />
+            <Button size="xs" color="light" className="border-green-500 text-green-600 hover:bg-green-50" onClick={onSaveEdit}>
+              <HiCheck className="h-3 w-3" />
             </Button>
             <Button size="xs" color="gray" onClick={onCancelEdit}>
-              <HiX className="h-4 w-4" />
+              <HiX className="h-3 w-3" />
             </Button>
           </div>
         ) : (

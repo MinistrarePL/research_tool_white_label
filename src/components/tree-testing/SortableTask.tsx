@@ -110,15 +110,16 @@ export default function SortableTask({
                 color="gray" 
                 onClick={handleCancel}
               >
-                <HiX className="h-4 w-4" />
+                <HiX className="h-3 w-3" />
               </Button>
               <Button 
                 size="xs" 
-                color="success" 
+                color="light"
+                className="border-green-500 text-green-600 hover:bg-green-50"
                 onClick={handleSave} 
                 disabled={!editQuestion.trim()}
               >
-                <HiCheck className="h-4 w-4" />
+                <HiCheck className="h-3 w-3" />
               </Button>
             </div>
           </div>

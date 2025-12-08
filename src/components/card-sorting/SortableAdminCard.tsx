@@ -81,10 +81,10 @@ export default function SortableAdminCard({
           {isEditing ? (
             <>
               <Button size="xs" color="light" onClick={handleSave} className="border-green-500 text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20">
-                <HiCheck className="h-4 w-4" />
+                <HiCheck className="h-3 w-3" />
               </Button>
               <Button size="xs" color="gray" onClick={handleCancel}>
-                <HiX className="h-4 w-4" />
+                <HiX className="h-3 w-3" />
               </Button>
             </>
           ) : (
