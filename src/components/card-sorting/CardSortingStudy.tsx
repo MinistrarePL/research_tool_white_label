@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { Button, Card, TextInput } from "flowbite-react";
-import { HiPlus } from "react-icons/hi";
+import { HiPlus, HiTrash, HiPencil } from "react-icons/hi";
 import SortableCard from "./SortableCard";
 import DroppableCategory from "./DroppableCategory";
 
@@ -31,10 +31,12 @@ type CardType = {
 type CategoryType = {
   id: string;
   name: string;
+  isPredefined?: boolean;
 };
 
 type Study = {
   id: string;
+  sortingType?: string | null;
   cards: CardType[];
   categories: CategoryType[];
 };
@@ -52,16 +54,23 @@ export default function CardSortingStudy({
   participantId: string;
   onComplete: () => void;
 }) {
-  const isOpenSort = study.categories.length === 0;
+  const sortingType = study.sortingType || "OPEN";
+  const isOpen = sortingType === "OPEN";
+  const isClosed = sortingType === "CLOSED";
+  const isHybrid = sortingType === "HYBRID";
   
   const [unsortedCards, setUnsortedCards] = useState<string[]>(
     study.cards.map((c) => c.id)
   );
   const [categoryCards, setCategoryCards] = useState<CategoryCards>({});
   const [userCategories, setUserCategories] = useState<CategoryType[]>(
-    isOpenSort ? [] : study.categories
+    isOpen 
+      ? [] 
+      : study.categories.map(c => ({ ...c, isPredefined: true }))
   );
   const [newCategoryName, setNewCategoryName] = useState("");
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -77,10 +86,47 @@ export default function CardSortingStudy({
     const newCat: CategoryType = {
       id: `user-${Date.now()}`,
       name: newCategoryName.trim(),
+      isPredefined: false,
     };
     setUserCategories([...userCategories, newCat]);
     setCategoryCards({ ...categoryCards, [newCat.id]: [] });
     setNewCategoryName("");
+  };
+
+  const deleteCategory = (categoryId: string) => {
+    const cardsInCategory = categoryCards[categoryId] || [];
+    if (cardsInCategory.length > 0) {
+      alert("Cannot delete a category that contains cards. Please move all cards first.");
+      return;
+    }
+    setUserCategories(userCategories.filter(c => c.id !== categoryId));
+    const newCategoryCards = { ...categoryCards };
+    delete newCategoryCards[categoryId];
+    setCategoryCards(newCategoryCards);
+  };
+
+  const startEditCategory = (categoryId: string) => {
+    const category = userCategories.find(c => c.id === categoryId);
+    if (category) {
+      setEditingCategoryId(categoryId);
+      setEditingCategoryName(category.name);
+    }
+  };
+
+  const saveEditCategory = () => {
+    if (!editingCategoryId || !editingCategoryName.trim()) return;
+    setUserCategories(userCategories.map(c => 
+      c.id === editingCategoryId 
+        ? { ...c, name: editingCategoryName.trim() }
+        : c
+    ));
+    setEditingCategoryId(null);
+    setEditingCategoryName("");
+  };
+
+  const cancelEditCategory = () => {
+    setEditingCategoryId(null);
+    setEditingCategoryName("");
   };
 
   const findContainer = (id: string) => {
@@ -150,9 +196,11 @@ export default function CardSortingStudy({
     for (const [categoryId, cardIds] of Object.entries(categoryCards)) {
       for (const cardId of cardIds) {
         const category = userCategories.find((c) => c.id === categoryId);
+        // For HYBRID: check if category was originally predefined
+        const originalCategory = study.categories.find(c => c.id === categoryId);
         results.push({
           cardId,
-          categoryId: categoryId.startsWith("user-") ? null : categoryId,
+          categoryId: category?.isPredefined && originalCategory ? categoryId : null,
           categoryName: category?.name,
         });
       }
@@ -181,7 +229,8 @@ export default function CardSortingStudy({
         </h1>
         <p className="text-gray-500 dark:text-gray-400">
           Drag cards from the left and drop them into the appropriate category.
-          {isOpenSort && " Create your own categories using the input below."}
+          {isOpen && " Create your own categories using the input below."}
+          {isHybrid && " You can modify predefined categories or create new ones."}
         </p>
       </div>
 
@@ -221,7 +270,7 @@ export default function CardSortingStudy({
               Categories
             </h3>
 
-            {isOpenSort && (
+            {(isOpen || isHybrid) && (
               <div className="flex gap-2 mb-4">
                 <TextInput
                   placeholder="New category name..."
@@ -230,7 +279,7 @@ export default function CardSortingStudy({
                   onKeyDown={(e) => e.key === "Enter" && addCategory()}
                   className="flex-1"
                 />
-                <Button onClick={addCategory}>
+                <Button onClick={addCategory} color="blue">
                   <HiPlus className="h-5 w-5" />
                 </Button>
               </div>
@@ -244,6 +293,15 @@ export default function CardSortingStudy({
                   name={category.name}
                   cards={categoryCards[category.id] || []}
                   allCards={study.cards}
+                  canEdit={isOpen || isHybrid}
+                  canDelete={isOpen || isHybrid}
+                  isEditing={editingCategoryId === category.id}
+                  editingName={editingCategoryName}
+                  onEditNameChange={setEditingCategoryName}
+                  onStartEdit={() => startEditCategory(category.id)}
+                  onSaveEdit={saveEditCategory}
+                  onCancelEdit={cancelEditCategory}
+                  onDelete={() => deleteCategory(category.id)}
                 />
               ))}
             </div>
@@ -272,6 +330,7 @@ export default function CardSortingStudy({
           onClick={handleSubmit}
           disabled={submitting || unsortedCards.length > 0}
           size="lg"
+          color="blue"
         >
           {submitting ? "Submitting..." : "Submit"}
         </Button>

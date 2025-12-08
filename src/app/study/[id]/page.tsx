@@ -13,6 +13,7 @@ type Study = {
   description: string | null;
   type: "CARD_SORTING" | "TREE_TESTING" | "FIRST_CLICK";
   status: "DRAFT" | "ACTIVE" | "CLOSED";
+  sortingType?: string | null;
   imageUrl: string | null;
   cards: any[];
   categories: any[];
@@ -73,6 +74,21 @@ export default function StudyPage() {
           </h2>
           <p className="text-gray-500 dark:text-gray-400">
             This study may have been deleted or the link is incorrect.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
+  if (study.status === "CLOSED") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+        <Card className="max-w-md text-center">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            Study Paused
+          </h2>
+          <p className="text-gray-500 dark:text-gray-400 mt-2">
+            This study has been paused and is not currently accepting participants.
           </p>
         </Card>
       </div>

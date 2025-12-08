@@ -13,7 +13,7 @@ export async function GET(
     where: { id },
     include: {
       cards: { orderBy: { order: "asc" } },
-      categories: true,
+      categories: { orderBy: { order: "asc" } },
       treeNodes: { orderBy: { order: "asc" } },
       tasks: { orderBy: { order: "asc" } },
       participants: {

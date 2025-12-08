@@ -15,9 +15,15 @@ export async function POST(
   const { id } = await params;
   const body = await req.json();
 
+  const maxOrder = await prisma.category.aggregate({
+    where: { studyId: id },
+    _max: { order: true },
+  });
+
   const category = await prisma.category.create({
     data: {
       name: body.name,
+      order: (maxOrder._max.order ?? -1) + 1,
       studyId: id,
     },
   });

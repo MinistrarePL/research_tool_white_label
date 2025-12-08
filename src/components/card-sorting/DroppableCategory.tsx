@@ -5,7 +5,8 @@ import {
   SortableContext,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Card } from "flowbite-react";
+import { Card, Button, TextInput } from "flowbite-react";
+import { HiTrash, HiPencil, HiCheck, HiX } from "react-icons/hi";
 import SortableCard from "./SortableCard";
 
 type CardType = {
@@ -18,11 +19,29 @@ export default function DroppableCategory({
   name,
   cards,
   allCards,
+  canEdit = false,
+  canDelete = false,
+  isEditing = false,
+  editingName = "",
+  onEditNameChange,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onDelete,
 }: {
   id: string;
   name: string;
   cards: string[];
   allCards: CardType[];
+  canEdit?: boolean;
+  canDelete?: boolean;
+  isEditing?: boolean;
+  editingName?: string;
+  onEditNameChange?: (name: string) => void;
+  onStartEdit?: () => void;
+  onSaveEdit?: () => void;
+  onCancelEdit?: () => void;
+  onDelete?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
 
@@ -32,12 +51,51 @@ export default function DroppableCategory({
         isOver ? "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20" : ""
       }`}
     >
-      <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
-        {name}
-        <span className="text-sm font-normal text-gray-500 ml-2">
-          ({cards.length})
-        </span>
-      </h4>
+      <div className="flex items-start justify-between mb-2">
+        {isEditing ? (
+          <div className="flex-1 flex gap-2">
+            <TextInput
+              value={editingName}
+              onChange={(e) => onEditNameChange?.(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onSaveEdit?.();
+                if (e.key === "Escape") onCancelEdit?.();
+              }}
+              className="flex-1"
+              autoFocus
+            />
+            <Button size="xs" color="success" onClick={onSaveEdit}>
+              <HiCheck className="h-4 w-4" />
+            </Button>
+            <Button size="xs" color="gray" onClick={onCancelEdit}>
+              <HiX className="h-4 w-4" />
+            </Button>
+          </div>
+        ) : (
+          <>
+            <h4 className="font-semibold text-gray-900 dark:text-white flex-1">
+              {name}
+              <span className="text-sm font-normal text-gray-500 ml-2">
+                ({cards.length})
+              </span>
+            </h4>
+            {(canEdit || canDelete) && (
+              <div className="flex gap-1">
+                {canEdit && (
+                  <Button size="xs" color="gray" onClick={onStartEdit}>
+                    <HiPencil className="h-3 w-3" />
+                  </Button>
+                )}
+                {canDelete && (
+                  <Button size="xs" color="failure" onClick={onDelete}>
+                    <HiTrash className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </>
+        )}
+      </div>
       <div ref={setNodeRef} className="min-h-[80px]">
         <SortableContext items={cards} strategy={verticalListSortingStrategy}>
           <div className="space-y-2">

@@ -6,6 +6,7 @@ import { HiUpload, HiTrash } from "react-icons/hi";
 
 type Study = {
   id: string;
+  status?: string;
   imageUrl: string | null;
   tasks: { id: string; question: string }[];
 };
@@ -17,6 +18,7 @@ export default function FirstClickEditor({
   study: Study;
   onUpdate: () => void;
 }) {
+  const isActive = study.status === "ACTIVE";
   const [uploading, setUploading] = useState(false);
   const [taskQuestion, setTaskQuestion] = useState(
     study.tasks[0]?.question || "Where would you click to...?"
@@ -74,6 +76,13 @@ export default function FirstClickEditor({
 
   return (
     <div className="space-y-6">
+      {isActive && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            <strong>Study is active:</strong> Editing is disabled. Stop the study to make changes.
+          </p>
+        </div>
+      )}
       <div>
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           Task Question
@@ -84,8 +93,9 @@ export default function FirstClickEditor({
             onChange={(e) => setTaskQuestion(e.target.value)}
             placeholder="Where would you click to...?"
             className="flex-1"
+            disabled={isActive}
           />
-          <Button onClick={updateTask}>Save</Button>
+          <Button onClick={updateTask} color="blue" disabled={isActive}>Save</Button>
         </div>
       </div>
 
@@ -111,7 +121,8 @@ export default function FirstClickEditor({
                 />
                 <Button
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
+                  disabled={uploading || isActive}
+                  color="blue"
                 >
                   {uploading ? "Uploading..." : "Upload Image"}
                 </Button>
@@ -138,11 +149,11 @@ export default function FirstClickEditor({
               <Button
                 color="gray"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
+                disabled={uploading || isActive}
               >
                 {uploading ? "Uploading..." : "Replace Image"}
               </Button>
-              <Button color="failure" onClick={removeImage}>
+              <Button color="failure" onClick={removeImage} disabled={isActive}>
                 <HiTrash className="mr-2 h-4 w-4" />
                 Remove
               </Button>

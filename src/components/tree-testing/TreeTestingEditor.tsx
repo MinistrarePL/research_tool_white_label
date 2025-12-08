@@ -20,6 +20,7 @@ type Task = {
 
 type Study = {
   id: string;
+  status?: string;
   treeNodes: TreeNode[];
   tasks: Task[];
 };
@@ -31,6 +32,7 @@ export default function TreeTestingEditor({
   study: Study;
   onUpdate: () => void;
 }) {
+  const isActive = study.status === "ACTIVE";
   const [newNodeLabel, setNewNodeLabel] = useState("");
   const [selectedParent, setSelectedParent] = useState<string>("");
   const [newTaskQuestion, setNewTaskQuestion] = useState("");
@@ -130,6 +132,7 @@ export default function TreeTestingEditor({
             size="xs"
             color="failure"
             onClick={() => deleteNode(node.id)}
+            disabled={isActive}
           >
             <HiTrash className="h-3 w-3" />
           </Button>
@@ -147,12 +150,21 @@ export default function TreeTestingEditor({
           Tree Structure ({study.treeNodes.length} nodes)
         </h3>
 
+        {isActive && (
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
+            <p className="text-sm text-yellow-800 dark:text-yellow-200">
+              <strong>Study is active:</strong> Editing is disabled. Stop the study to make changes.
+            </p>
+          </div>
+        )}
+
         <div className="space-y-3 mb-4">
           <div>
             <Label className="mb-2 block">Parent Node</Label>
             <Select
               value={selectedParent}
               onChange={(e) => setSelectedParent(e.target.value)}
+              disabled={isActive}
             >
               <option value="">Root level</option>
               {study.treeNodes.map((node) => (
@@ -167,10 +179,11 @@ export default function TreeTestingEditor({
               placeholder="New node label..."
               value={newNodeLabel}
               onChange={(e) => setNewNodeLabel(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && addNode()}
+              onKeyDown={(e) => e.key === "Enter" && !isActive && addNode()}
               className="flex-1"
+              disabled={isActive}
             />
-            <Button onClick={addNode} disabled={loading}>
+            <Button onClick={addNode} disabled={loading || isActive} color="blue">
               <HiPlus className="h-5 w-5" />
             </Button>
           </div>
@@ -199,6 +212,7 @@ export default function TreeTestingEditor({
               placeholder="Where would you find...?"
               value={newTaskQuestion}
               onChange={(e) => setNewTaskQuestion(e.target.value)}
+              disabled={isActive}
             />
           </div>
           <div>
@@ -206,6 +220,7 @@ export default function TreeTestingEditor({
             <Select
               value={newTaskCorrectNode}
               onChange={(e) => setNewTaskCorrectNode(e.target.value)}
+              disabled={isActive}
             >
               <option value="">No correct answer</option>
               {study.treeNodes.map((node) => (
@@ -215,7 +230,7 @@ export default function TreeTestingEditor({
               ))}
             </Select>
           </div>
-          <Button onClick={addTask} disabled={loading}>
+          <Button onClick={addTask} disabled={loading || isActive} color="blue">
             <HiPlus className="mr-2 h-5 w-5" />
             Add Task
           </Button>
@@ -223,7 +238,7 @@ export default function TreeTestingEditor({
 
         <div className="space-y-2">
           {study.tasks.map((task, index) => (
-            <Card key={task.id} className="p-3">
+            <Card key={task.id} className="py-2 px-3">
               <div className="flex items-start justify-between gap-2">
                 <div>
                   <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -244,6 +259,7 @@ export default function TreeTestingEditor({
                   size="xs"
                   color="failure"
                   onClick={() => deleteTask(task.id)}
+                  disabled={isActive}
                 >
                   <HiTrash className="h-4 w-4" />
                 </Button>

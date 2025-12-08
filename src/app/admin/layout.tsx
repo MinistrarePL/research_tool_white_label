@@ -1,7 +1,7 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
-import { Navbar, NavbarBrand, Dropdown, DropdownHeader, DropdownItem, DropdownDivider, Avatar, DarkThemeToggle } from "flowbite-react";
+import { Navbar, NavbarBrand, Dropdown, DropdownHeader, DropdownItem, DropdownDivider, Avatar } from "flowbite-react";
 import Link from "next/link";
 import { HiLogout, HiViewGrid } from "react-icons/hi";
 
@@ -21,7 +21,6 @@ export default function AdminLayout({
           </span>
         </NavbarBrand>
         <div className="flex items-center gap-3">
-          <DarkThemeToggle />
           <Dropdown
             arrowIcon={false}
             inline

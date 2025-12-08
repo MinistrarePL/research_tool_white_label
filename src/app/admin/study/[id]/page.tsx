@@ -16,6 +16,7 @@ type Study = {
   description: string | null;
   type: "CARD_SORTING" | "TREE_TESTING" | "FIRST_CLICK";
   status: "DRAFT" | "ACTIVE" | "CLOSED";
+  sortingType?: string | null;
   imageUrl: string | null;
   cards: any[];
   categories: any[];
@@ -85,7 +86,7 @@ export default function StudyEditorPage() {
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
-        <Button as={Link} href="/admin" color="gray" size="sm">
+        <Button as={Link} href="/admin" color="light" size="sm">
           <HiArrowLeft className="mr-1 h-4 w-4" />
           Back
         </Button>
@@ -102,7 +103,7 @@ export default function StudyEditorPage() {
           Copy Link
         </Button>
         <Button
-          color={study.status === "ACTIVE" ? "failure" : "success"}
+          color={study.status === "ACTIVE" ? "failure" : "blue"}
           onClick={toggleStatus}
         >
           {study.status === "ACTIVE" ? (
