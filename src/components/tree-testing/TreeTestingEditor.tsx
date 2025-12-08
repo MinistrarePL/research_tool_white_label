@@ -331,7 +331,7 @@ export default function TreeTestingEditor({
               placeholder="New child node..."
               autoFocus
               sizing="sm"
-              className="flex-1"
+              className="flex-1 bg-white dark:bg-white text-gray-900 dark:text-gray-900"
             />
             <Button size="xs" color="success" onClick={() => addChildNode(node.id)} disabled={loading}>
               <HiCheck className="h-3 w-3" />

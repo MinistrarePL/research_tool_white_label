@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Badge, Modal, ModalHeader, ModalBody, Label, TextInput, Select, Textarea, Spinner } from "flowbite-react";
+import { Button, Card, Badge, Modal, ModalHeader, ModalBody, Label, TextInput, Select, Textarea, Spinner, Toast } from "flowbite-react";
 import Link from "next/link";
-import { HiPlus, HiPencil, HiTrash, HiClipboard } from "react-icons/hi";
+import { HiPlus, HiPencil, HiTrash, HiClipboard, HiCheck, HiExclamation } from "react-icons/hi";
 
 type Study = {
   id: string;
@@ -47,6 +47,8 @@ export default function AdminDashboard() {
     type: "CARD_SORTING" as Study["type"],
   });
   const [creating, setCreating] = useState(false);
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean; studyId: string | null }>({ show: false, studyId: null });
+  const [toast, setToast] = useState<{ show: boolean; message: string } | null>(null);
 
   useEffect(() => {
     fetchStudies();
@@ -77,16 +79,22 @@ export default function AdminDashboard() {
     setCreating(false);
   };
 
-  const deleteStudy = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this study?")) return;
-    await fetch(`/api/studies/${id}`, { method: "DELETE" });
+  const confirmDelete = (id: string) => {
+    setDeleteModal({ show: true, studyId: id });
+  };
+
+  const deleteStudy = async () => {
+    if (!deleteModal.studyId) return;
+    await fetch(`/api/studies/${deleteModal.studyId}`, { method: "DELETE" });
+    setDeleteModal({ show: false, studyId: null });
     fetchStudies();
   };
 
   const copyLink = (id: string) => {
     const url = `${window.location.origin}/study/${id}`;
     navigator.clipboard.writeText(url);
-    alert("Link copied to clipboard!");
+    setToast({ show: true, message: "Link copied to clipboard!" });
+    setTimeout(() => setToast(null), 3000);
   };
 
   if (loading) {
@@ -156,6 +164,7 @@ export default function AdminDashboard() {
                 <Button
                   size="sm"
                   color="gray"
+                  outline
                   onClick={() => copyLink(study.id)}
                 >
                   <HiClipboard className="mr-1 h-4 w-4" />
@@ -164,7 +173,7 @@ export default function AdminDashboard() {
                 <Button
                   size="sm"
                   color="failure"
-                  onClick={() => deleteStudy(study.id)}
+                  onClick={() => confirmDelete(study.id)}
                 >
                   <HiTrash className="h-4 w-4" />
                 </Button>
@@ -228,6 +237,40 @@ export default function AdminDashboard() {
           </form>
         </ModalBody>
       </Modal>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={deleteModal.show} size="md" onClose={() => setDeleteModal({ show: false, studyId: null })} popup>
+        <ModalHeader />
+        <ModalBody>
+          <div className="text-center">
+            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-gray-400 dark:text-gray-200" />
+            <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
+              Are you sure you want to delete this study?
+            </h3>
+            <div className="flex justify-center gap-4">
+              <Button color="failure" onClick={deleteStudy}>
+                Yes, delete
+              </Button>
+              <Button color="gray" onClick={() => setDeleteModal({ show: false, studyId: null })}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </ModalBody>
+      </Modal>
+
+      {/* Toast notification */}
+      {toast?.show && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Toast>
+            <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
+              <HiCheck className="h-5 w-5" />
+            </div>
+            <div className="ml-3 text-sm font-normal">{toast.message}</div>
+            <Toast.Toggle onDismiss={() => setToast(null)} />
+          </Toast>
+        </div>
+      )}
     </div>
   );
 }

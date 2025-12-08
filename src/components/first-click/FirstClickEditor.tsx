@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Button, Label, TextInput, Card } from "flowbite-react";
-import { HiUpload, HiTrash, HiPlus, HiPencil, HiCheck, HiX } from "react-icons/hi";
+import { Button, Label, TextInput, Card, Modal, ModalHeader, ModalBody, Toast } from "flowbite-react";
+import { HiUpload, HiTrash, HiPlus, HiPencil, HiCheck, HiX, HiExclamation } from "react-icons/hi";
 
 type Task = {
   id: string;
@@ -33,6 +33,8 @@ export default function FirstClickEditor({
   const [tasks, setTasks] = useState<Task[]>(study.tasks);
   const [previewImages, setPreviewImages] = useState<{ [key: string]: string }>({});
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
+  const [deleteModal, setDeleteModal] = useState<{ show: boolean; taskId: string | null }>({ show: false, taskId: null });
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: "error" | "success" } | null>(null);
 
   useEffect(() => {
     setTasks(study.tasks);
@@ -59,12 +61,22 @@ export default function FirstClickEditor({
     onUpdate();
   };
 
-  const deleteTask = async (taskId: string) => {
-    if (!confirm("Are you sure you want to delete this task?")) return;
-    await fetch(`/api/studies/${study.id}/tasks/${taskId}`, {
+  const confirmDeleteTask = (taskId: string) => {
+    setDeleteModal({ show: true, taskId });
+  };
+
+  const deleteTask = async () => {
+    if (!deleteModal.taskId) return;
+    await fetch(`/api/studies/${study.id}/tasks/${deleteModal.taskId}`, {
       method: "DELETE",
     });
+    setDeleteModal({ show: false, taskId: null });
     onUpdate();
+  };
+
+  const showToast = (message: string, type: "error" | "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(null), 4000);
   };
 
   const handleFileChange = async (taskId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -91,7 +103,7 @@ export default function FirstClickEditor({
         delete newPrev[taskId];
         return newPrev;
       });
-      alert("Error reading file. Please try again.");
+      showToast("Error reading file. Please try again.", "error");
     };
     uploadReader.onload = async () => {
       try {
@@ -139,7 +151,7 @@ export default function FirstClickEditor({
           delete newPrev[taskId];
           return newPrev;
         });
-        alert("Error uploading image. Please try again.");
+        showToast("Error uploading image. Please try again.", "error");
       }
     };
     uploadReader.readAsDataURL(file);
@@ -240,7 +252,7 @@ export default function FirstClickEditor({
                     <Button
                       size="xs"
                       color="light"
-                      onClick={() => deleteTask(task.id)}
+                      onClick={() => confirmDeleteTask(task.id)}
                       disabled={isActive}
                     >
                       <HiTrash className="h-4 w-4 text-gray-500 hover:text-red-500" />
@@ -337,6 +349,44 @@ export default function FirstClickEditor({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <Modal show={deleteModal.show} size="md" onClose={() => setDeleteModal({ show: false, taskId: null })} popup>
+        <ModalHeader />
+        <ModalBody>
+          <div className="text-center">
+            <HiExclamation className="mx-auto mb-4 h-14 w-14 text-gray-400 dark:text-gray-200" />
+            <h3 className="mb-5 text-lg font-normal text-gray-500 dark:text-gray-400">
+              Are you sure you want to delete this task?
+            </h3>
+            <div className="flex justify-center gap-4">
+              <Button color="failure" onClick={deleteTask}>
+                Yes, delete
+              </Button>
+              <Button color="gray" onClick={() => setDeleteModal({ show: false, taskId: null })}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </ModalBody>
+      </Modal>
+
+      {/* Toast notification */}
+      {toast?.show && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Toast>
+            <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+              toast.type === "error" 
+                ? "bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200" 
+                : "bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200"
+            }`}>
+              {toast.type === "error" ? <HiX className="h-5 w-5" /> : <HiCheck className="h-5 w-5" />}
+            </div>
+            <div className="ml-3 text-sm font-normal">{toast.message}</div>
+            <Toast.Toggle onDismiss={() => setToast(null)} />
+          </Toast>
+        </div>
+      )}
     </div>
   );
 }

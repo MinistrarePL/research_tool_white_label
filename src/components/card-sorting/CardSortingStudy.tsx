@@ -18,8 +18,8 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Button, Card, TextInput } from "flowbite-react";
-import { HiPlus, HiTrash, HiPencil } from "react-icons/hi";
+import { Button, Card, TextInput, Toast } from "flowbite-react";
+import { HiPlus, HiTrash, HiPencil, HiExclamationCircle } from "react-icons/hi";
 import SortableCard from "./SortableCard";
 import DroppableCategory from "./DroppableCategory";
 
@@ -73,6 +73,12 @@ export default function CardSortingStudy({
   const [editingCategoryName, setEditingCategoryName] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; message: string } | null>(null);
+
+  const showToast = (message: string) => {
+    setToast({ show: true, message });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -96,7 +102,7 @@ export default function CardSortingStudy({
   const deleteCategory = (categoryId: string) => {
     const cardsInCategory = categoryCards[categoryId] || [];
     if (cardsInCategory.length > 0) {
-      alert("Cannot delete a category that contains cards. Please move all cards first.");
+      showToast("Cannot delete a category that contains cards. Please move all cards first.");
       return;
     }
     setUserCategories(userCategories.filter(c => c.id !== categoryId));
@@ -186,7 +192,7 @@ export default function CardSortingStudy({
 
   const handleSubmit = async () => {
     if (unsortedCards.length > 0) {
-      alert("Please sort all cards before submitting.");
+      showToast("Please sort all cards before submitting.");
       return;
     }
 
@@ -335,6 +341,19 @@ export default function CardSortingStudy({
           {submitting ? "Submitting..." : "Submit"}
         </Button>
       </div>
+
+      {/* Toast notification */}
+      {toast?.show && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Toast>
+            <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-500 dark:bg-orange-700 dark:text-orange-200">
+              <HiExclamationCircle className="h-5 w-5" />
+            </div>
+            <div className="ml-3 text-sm font-normal">{toast.message}</div>
+            <Toast.Toggle onDismiss={() => setToast(null)} />
+          </Toast>
+        </div>
+      )}
     </div>
   );
 }

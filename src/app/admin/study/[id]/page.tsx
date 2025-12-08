@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { Button, Tabs, TabItem, Badge, Spinner, TextInput, Label, Textarea } from "flowbite-react";
-import { HiArrowLeft, HiPlay, HiStop, HiLink } from "react-icons/hi";
+import { Button, Tabs, TabItem, Badge, Spinner, TextInput, Label, Textarea, Toast } from "flowbite-react";
+import { HiArrowLeft, HiPlay, HiStop, HiLink, HiCheck } from "react-icons/hi";
 import Link from "next/link";
 import CardSortingEditor from "@/components/card-sorting/CardSortingEditor";
 import TreeTestingEditor from "@/components/tree-testing/TreeTestingEditor";
@@ -31,6 +31,7 @@ export default function StudyEditorPage() {
   const [study, setStudy] = useState<Study | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<number>(0);
+  const [toast, setToast] = useState<{ show: boolean; message: string } | null>(null);
 
   useEffect(() => {
     fetchStudy();
@@ -68,7 +69,8 @@ export default function StudyEditorPage() {
   const copyLink = () => {
     const url = `${window.location.origin}/study/${params.id}`;
     navigator.clipboard.writeText(url);
-    alert("Link copied!");
+    setToast({ show: true, message: "Link copied!" });
+    setTimeout(() => setToast(null), 3000);
   };
 
   if (loading) {
@@ -104,7 +106,7 @@ export default function StudyEditorPage() {
         <Badge color={statusColors[study.status]} size="lg">
           {study.status}
         </Badge>
-        <Button color="gray" onClick={copyLink}>
+        <Button color="gray" outline onClick={copyLink}>
           <HiLink className="mr-1 h-4 w-4" />
           Copy Link
         </Button>
@@ -169,6 +171,19 @@ export default function StudyEditorPage() {
           </div>
         </TabItem>
       </Tabs>
+
+      {/* Toast notification */}
+      {toast?.show && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <Toast>
+            <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
+              <HiCheck className="h-5 w-5" />
+            </div>
+            <div className="ml-3 text-sm font-normal">{toast.message}</div>
+            <Toast.Toggle onDismiss={() => setToast(null)} />
+          </Toast>
+        </div>
+      )}
     </div>
   );
 }

@@ -26,3 +26,31 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), system-ui, sans-serif;
 }
+
+/* ===========================================
+   Custom Flowbite Form Styles
+   =========================================== */
+
+/* TextInput - white background */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="url"] {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* Textarea - white background */
+textarea {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
+
+/* Select - white background */
+select {
+  background-color: #ffffff !important;
+  color: #111827 !important;
+}
