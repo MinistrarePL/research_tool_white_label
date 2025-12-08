@@ -1,8 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 import { Button, TextInput, Label, Card, Select } from "flowbite-react";
 import { HiPlus, HiTrash, HiChevronRight, HiChevronDown, HiPencil, HiCheck, HiX } from "react-icons/hi";
+import SortableTask from "./SortableTask";
 
 type TreeNode = {
   id: string;
@@ -38,14 +54,24 @@ export default function TreeTestingEditor({
   const [loading, setLoading] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  const [editTaskQuestion, setEditTaskQuestion] = useState("");
-  const [editTaskCorrectNode, setEditTaskCorrectNode] = useState<string>("");
+  const [tasks, setTasks] = useState<Task[]>(study.tasks);
   
   // Node editing state
   const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
   const [editNodeLabel, setEditNodeLabel] = useState("");
   const [addingChildToNodeId, setAddingChildToNodeId] = useState<string | null>(null);
   const [newChildLabel, setNewChildLabel] = useState("");
+
+  useEffect(() => {
+    setTasks(study.tasks);
+  }, [study.tasks]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const rootNodes = study.treeNodes.filter((n) => !n.parentId);
 
@@ -160,31 +186,47 @@ export default function TreeTestingEditor({
     onUpdate();
   };
 
-  const startEditingTask = (task: Task) => {
-    setEditingTaskId(task.id);
-    setEditTaskQuestion(task.question);
-    setEditTaskCorrectNode(task.correctNodeId || "");
+  const handleTasksDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = tasks.findIndex((t) => t.id === active.id);
+    const newIndex = tasks.findIndex((t) => t.id === over.id);
+
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const newTasks = arrayMove(tasks, oldIndex, newIndex);
+    setTasks(newTasks);
+
+    // Update order in database
+    await Promise.all(
+      newTasks.map((task, index) =>
+        fetch(`/api/studies/${study.id}/tasks/${task.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ order: index }),
+        })
+      )
+    );
+    onUpdate();
   };
 
-  const cancelEditingTask = () => {
-    setEditingTaskId(null);
-    setEditTaskQuestion("");
-    setEditTaskCorrectNode("");
+  const startEditingTask = (taskId: string) => {
+    setEditingTaskId(taskId);
   };
 
-  const saveTask = async (taskId: string) => {
-    if (!editTaskQuestion.trim()) return;
+  const saveTask = async (taskId: string, question: string, correctNodeId: string | null) => {
     setLoading(true);
     await fetch(`/api/studies/${study.id}/tasks/${taskId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        question: editTaskQuestion.trim(),
-        correctNodeId: editTaskCorrectNode || null,
+        question,
+        correctNodeId,
       }),
     });
     setLoading(false);
-    cancelEditingTask();
+    setEditingTaskId(null);
     onUpdate();
   };
 
@@ -412,55 +454,10 @@ export default function TreeTestingEditor({
           </Button>
         </div>
 
-        <div className="space-y-2">
-          {study.tasks.map((task, index) => (
-            <Card key={task.id} className="py-2 px-3">
-              {editingTaskId === task.id ? (
-                <div className="space-y-3">
-                  <div>
-                    <Label className="mb-2 block text-xs">Question</Label>
-                    <TextInput
-                      value={editTaskQuestion}
-                      onChange={(e) => setEditTaskQuestion(e.target.value)}
-                      placeholder="Where would you find...?"
-                      disabled={loading}
-                    />
-                  </div>
-                  <div>
-                    <Label className="mb-2 block text-xs">Correct Answer (optional)</Label>
-                    <Select
-                      value={editTaskCorrectNode}
-                      onChange={(e) => setEditTaskCorrectNode(e.target.value)}
-                      disabled={loading}
-                    >
-                      <option value="">No correct answer</option>
-                      {study.treeNodes.map((node) => (
-                        <option key={node.id} value={node.id}>
-                          {node.label}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      size="xs"
-                      color="gray"
-                      onClick={cancelEditingTask}
-                      disabled={loading}
-                    >
-                      <HiX className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="xs"
-                      color="success"
-                      onClick={() => saveTask(task.id)}
-                      disabled={loading || !editTaskQuestion.trim()}
-                    >
-                      <HiCheck className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ) : (
+        {isActive ? (
+          <div className="space-y-2">
+            {tasks.map((task, index) => (
+              <Card key={task.id} className="py-2 px-3">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
                     <span className="text-sm text-gray-500 dark:text-gray-400">
@@ -481,14 +478,6 @@ export default function TreeTestingEditor({
                     <Button
                       size="xs"
                       color="light"
-                      onClick={() => startEditingTask(task)}
-                      disabled={isActive}
-                    >
-                      <HiPencil className="h-4 w-4 text-gray-500" />
-                    </Button>
-                    <Button
-                      size="xs"
-                      color="light"
                       onClick={() => deleteTask(task.id)}
                       disabled={isActive}
                     >
@@ -496,10 +485,39 @@ export default function TreeTestingEditor({
                     </Button>
                   </div>
                 </div>
-              )}
-            </Card>
-          ))}
-        </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleTasksDragEnd}
+          >
+            <SortableContext
+              items={tasks.map((t) => t.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2">
+                {tasks.map((task, index) => (
+                  <SortableTask
+                    key={task.id}
+                    id={task.id}
+                    task={task}
+                    index={index}
+                    treeNodes={study.treeNodes}
+                    isActive={isActive}
+                    isEditing={editingTaskId === task.id}
+                    onEdit={() => startEditingTask(task.id)}
+                    onDelete={() => deleteTask(task.id)}
+                    onSave={(question, correctNodeId) => saveTask(task.id, question, correctNodeId)}
+                    onCancel={() => setEditingTaskId(null)}
+                  />
+                ))}
+              </div>
+            </SortableContext>
+          </DndContext>
+        )}
       </div>
     </div>
   );

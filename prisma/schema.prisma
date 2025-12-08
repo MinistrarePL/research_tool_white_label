@@ -94,10 +94,12 @@ model Task {
   question        String
   correctNodeId   String?
   correctNode     TreeNode? @relation("CorrectAnswer", fields: [correctNodeId], references: [id], onDelete: SetNull)
+  imageUrl        String?  // For First Click tasks
   order           Int      @default(0)
   studyId         String
   study           Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
   treeTestResults TreeTestResult[]
+  clickResults    ClickResult[]
 }
 
 model TreeTestResult {
@@ -115,6 +117,8 @@ model TreeTestResult {
 // First Click Models
 model ClickResult {
   id            String   @id @default(cuid())
+  taskId        String?
+  task          Task?     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   x             Float
   y             Float
   timeToClickMs Int
