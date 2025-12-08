@@ -149,7 +149,7 @@ export default function StudyPage() {
               <p>You will be shown an image and asked where you would click.</p>
             )}
           </div>
-          <Button onClick={startStudy} size="lg">
+          <Button onClick={startStudy} size="lg" color="blue">
             Start Study
           </Button>
         </Card>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Button, Label, TextInput, Card, Modal, ModalHeader, ModalBody, Toast } from "flowbite-react";
+import { Button, Label, TextInput, Card, Modal, ModalHeader, ModalBody, Toast, ToastToggle } from "flowbite-react";
 import { HiUpload, HiTrash, HiPlus, HiPencil, HiCheck, HiX, HiExclamation } from "react-icons/hi";
 
 type Task = {
@@ -373,8 +373,8 @@ export default function FirstClickEditor({
 
       {/* Toast notification */}
       {toast?.show && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Toast>
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+          <Toast className={`shadow-lg border ${toast.type === "error" ? "border-red-200 dark:border-red-700" : "border-green-200 dark:border-green-700"}`}>
             <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
               toast.type === "error" 
                 ? "bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200" 
@@ -382,8 +382,8 @@ export default function FirstClickEditor({
             }`}>
               {toast.type === "error" ? <HiX className="h-5 w-5" /> : <HiCheck className="h-5 w-5" />}
             </div>
-            <div className="ml-3 text-sm font-normal">{toast.message}</div>
-            <Toast.Toggle onDismiss={() => setToast(null)} />
+            <div className="ml-3 text-sm font-medium">{toast.message}</div>
+            <ToastToggle onDismiss={() => setToast(null)} />
           </Toast>
         </div>
       )}

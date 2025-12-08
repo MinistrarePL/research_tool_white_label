@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect } from "react";
 import { Card, Button, Badge, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from "flowbite-react";
 import { HiDownload } from "react-icons/hi";
+import CardSortingResults from "@/components/card-sorting/CardSortingResults";
+import FirstClickResults from "@/components/first-click/FirstClickResults";
 
 type Study = {
   id: string;
@@ -186,60 +188,8 @@ export default function StudyResults({ study }: { study: Study }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-            Results
-          </h3>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            {completedParticipants.length} completed responses
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button color="gray" onClick={exportCSV}>
-            <HiDownload className="mr-2 h-4 w-4" />
-            Export CSV
-          </Button>
-          <Button color="gray" onClick={exportJSON}>
-            <HiDownload className="mr-2 h-4 w-4" />
-            Export JSON
-          </Button>
-        </div>
-      </div>
-
       {study.type === "CARD_SORTING" && (
-        <Card>
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
-            Card Sorting Results
-          </h4>
-          <Table>
-            <TableHead>
-              <TableHeadCell>Card</TableHeadCell>
-              {completedParticipants.slice(0, 10).map((_, i) => (
-                <TableHeadCell key={i}>P{i + 1}</TableHeadCell>
-              ))}
-            </TableHead>
-            <TableBody>
-              {study.cards.map((card) => (
-                <TableRow key={card.id}>
-                  <TableCell className="font-medium">{card.label}</TableCell>
-                  {completedParticipants.slice(0, 10).map((p, i) => {
-                    const result = p.cardSortResults.find(
-                      (r) => r.cardId === card.id
-                    );
-                    const categoryName =
-                      result?.categoryName ||
-                      study.categories.find(
-                        (c) => c.id === result?.categoryId
-                      )?.name ||
-                      "-";
-                    return <TableCell key={i}>{categoryName}</TableCell>;
-                  })}
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </Card>
+        <CardSortingResults study={study} />
       )}
 
       {study.type === "TREE_TESTING" && (
@@ -282,39 +232,8 @@ export default function StudyResults({ study }: { study: Study }) {
         </Card>
       )}
 
-      {study.type === "FIRST_CLICK" && study.imageUrl && (
-        <Card>
-          <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
-            Click Heatmap
-          </h4>
-          <div className="relative">
-            <img
-              ref={imgRef}
-              src={study.imageUrl}
-              alt="Test image"
-              className="hidden"
-              onLoad={() => setImgLoaded(true)}
-            />
-            <canvas
-              ref={canvasRef}
-              className="max-w-full h-auto border border-gray-200 dark:border-gray-700 rounded"
-            />
-          </div>
-          <div className="mt-4 flex gap-4 text-sm">
-            <Badge color="blue">
-              Avg. time to click:{" "}
-              {(
-                completedParticipants.flatMap((p) => p.clickResults).reduce(
-                  (sum, r) => sum + r.timeToClickMs,
-                  0
-                ) /
-                completedParticipants.flatMap((p) => p.clickResults).length /
-                1000
-              ).toFixed(1)}
-              s
-            </Badge>
-          </div>
-        </Card>
+      {study.type === "FIRST_CLICK" && (
+        <FirstClickResults study={study} />
       )}
     </div>
   );

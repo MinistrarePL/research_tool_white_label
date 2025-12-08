@@ -18,7 +18,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { Button, Card, TextInput, Toast } from "flowbite-react";
+import { Button, Card, TextInput, Toast, ToastToggle } from "flowbite-react";
 import { HiPlus, HiTrash, HiPencil, HiExclamationCircle } from "react-icons/hi";
 import SortableCard from "./SortableCard";
 import DroppableCategory from "./DroppableCategory";
@@ -344,13 +344,13 @@ export default function CardSortingStudy({
 
       {/* Toast notification */}
       {toast?.show && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Toast>
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+          <Toast className="shadow-lg border border-orange-200 dark:border-orange-700">
             <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-orange-100 text-orange-500 dark:bg-orange-700 dark:text-orange-200">
               <HiExclamationCircle className="h-5 w-5" />
             </div>
-            <div className="ml-3 text-sm font-normal">{toast.message}</div>
-            <Toast.Toggle onDismiss={() => setToast(null)} />
+            <div className="ml-3 text-sm font-medium">{toast.message}</div>
+            <ToastToggle onDismiss={() => setToast(null)} />
           </Toast>
         </div>
       )}

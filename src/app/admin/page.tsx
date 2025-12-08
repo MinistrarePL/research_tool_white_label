@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Badge, Modal, ModalHeader, ModalBody, Label, TextInput, Select, Textarea, Spinner, Toast } from "flowbite-react";
+import { Button, Card, Badge, Modal, ModalHeader, ModalBody, Label, TextInput, Select, Textarea, Spinner, Toast, ToastToggle } from "flowbite-react";
 import Link from "next/link";
 import { HiPlus, HiPencil, HiTrash, HiClipboard, HiCheck, HiExclamation } from "react-icons/hi";
 
@@ -122,13 +122,9 @@ export default function AdminDashboard() {
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
             No studies yet
           </h3>
-          <p className="text-gray-500 dark:text-gray-400 mb-4">
+          <p className="text-gray-500 dark:text-gray-400">
             Create your first study to start collecting user insights.
           </p>
-          <Button onClick={() => setShowModal(true)} color="blue">
-            <HiPlus className="mr-2 h-5 w-5" />
-            Create Study
-          </Button>
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -261,13 +257,13 @@ export default function AdminDashboard() {
 
       {/* Toast notification */}
       {toast?.show && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Toast>
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+          <Toast className="shadow-lg border border-green-200 dark:border-green-700">
             <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
               <HiCheck className="h-5 w-5" />
             </div>
-            <div className="ml-3 text-sm font-normal">{toast.message}</div>
-            <Toast.Toggle onDismiss={() => setToast(null)} />
+            <div className="ml-3 text-sm font-medium">{toast.message}</div>
+            <ToastToggle onDismiss={() => setToast(null)} />
           </Toast>
         </div>
       )}

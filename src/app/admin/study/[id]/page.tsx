@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { Button, Tabs, TabItem, Badge, Spinner, TextInput, Label, Textarea, Toast } from "flowbite-react";
+import { Button, Tabs, TabItem, Badge, Spinner, TextInput, Label, Textarea, Toast, ToastToggle } from "flowbite-react";
 import { HiArrowLeft, HiPlay, HiStop, HiLink, HiCheck } from "react-icons/hi";
 import Link from "next/link";
 import CardSortingEditor from "@/components/card-sorting/CardSortingEditor";
@@ -94,7 +94,7 @@ export default function StudyEditorPage() {
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
-        <Button as={Link} href="/admin" color="light" size="sm">
+        <Button as={Link} href="/admin" color="gray" outline size="sm">
           <HiArrowLeft className="mr-1 h-4 w-4" />
           Back
         </Button>
@@ -152,7 +152,7 @@ export default function StudyEditorPage() {
         </TabItem>
 
         <TabItem active={activeTab === 1} title="Content">
-          <div className="mt-4">
+          <div>
             {study.type === "CARD_SORTING" && (
               <CardSortingEditor study={study} onUpdate={fetchStudy} />
             )}
@@ -160,12 +160,14 @@ export default function StudyEditorPage() {
               <TreeTestingEditor study={study} onUpdate={fetchStudy} />
             )}
             {study.type === "FIRST_CLICK" && (
-              <FirstClickEditor study={study} onUpdate={fetchStudy} />
+              <div className="mt-4">
+                <FirstClickEditor study={study} onUpdate={fetchStudy} />
+              </div>
             )}
           </div>
         </TabItem>
 
-        <TabItem active={activeTab === 2} title={`Results (${study.participants.length})`}>
+        <TabItem active={activeTab === 2} title={`Results (${study.participants.filter((p: any) => p.completedAt).length})`}>
           <div className="mt-4">
             <StudyResults study={study} />
           </div>
@@ -174,13 +176,13 @@ export default function StudyEditorPage() {
 
       {/* Toast notification */}
       {toast?.show && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <Toast>
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+          <Toast className="shadow-lg border border-green-200 dark:border-green-700">
             <div className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200">
               <HiCheck className="h-5 w-5" />
             </div>
-            <div className="ml-3 text-sm font-normal">{toast.message}</div>
-            <Toast.Toggle onDismiss={() => setToast(null)} />
+            <div className="ml-3 text-sm font-medium">{toast.message}</div>
+            <ToastToggle onDismiss={() => setToast(null)} />
           </Toast>
         </div>
       )}

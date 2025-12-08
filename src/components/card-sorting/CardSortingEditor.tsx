@@ -198,8 +198,8 @@ export default function CardSortingEditor({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-0 lg:divide-x lg:divide-gray-200 dark:lg:divide-gray-700">
+      <div className="lg:pr-10 pt-6 pb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           Cards ({study.cards.length})
         </h3>
@@ -271,7 +271,7 @@ export default function CardSortingEditor({
         )}
       </div>
 
-      <div>
+      <div className="lg:pl-10 pt-6 pb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           Categories ({study.categories.length})
         </h3>

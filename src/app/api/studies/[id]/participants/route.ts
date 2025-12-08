@@ -55,12 +55,19 @@ export async function PATCH(
       });
     }
   } else if (type === "FIRST_CLICK") {
+    // Delete existing results for this participant
+    await prisma.clickResult.deleteMany({
+      where: { participantId },
+    });
+
+    // Create new results
     for (const result of results) {
       await prisma.clickResult.create({
         data: {
           x: result.x,
           y: result.y,
           timeToClickMs: result.timeToClickMs,
+          taskId: result.taskId || null,
           participantId,
         },
       });

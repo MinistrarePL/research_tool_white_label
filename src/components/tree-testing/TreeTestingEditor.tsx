@@ -349,8 +349,8 @@ export default function TreeTestingEditor({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      <div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-0 lg:divide-x lg:divide-gray-200 dark:lg:divide-gray-700">
+      <div className="lg:pr-10 pt-6 pb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           Tree Structure ({study.treeNodes.length} nodes)
         </h3>
@@ -418,7 +418,7 @@ export default function TreeTestingEditor({
         </Card>
       </div>
 
-      <div>
+      <div className="lg:pl-10 pt-6 pb-6">
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           Tasks ({study.tasks.length})
         </h3>
