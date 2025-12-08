@@ -129,7 +129,7 @@ export default function AdminDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {studies.map((study) => (
-            <Card key={study.id}>
+            <Card key={study.id} className="flex flex-col h-full">
               <div className="flex justify-between items-start mb-2">
                 <Badge color={studyTypeColors[study.type]}>
                   {studyTypeLabels[study.type]}
@@ -139,15 +139,15 @@ export default function AdminDashboard() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {study.title}
               </h3>
-              {study.description && (
+              <div className="min-h-[2.5rem] flex items-start">
                 <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-                  {study.description}
+                  {study.description || ""}
                 </p>
-              )}
+              </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
                 {study._count.participants} participants
               </p>
-              <div className="flex gap-2 mt-4">
+              <div className="flex gap-2 mt-4 mt-auto">
                 <Button
                   as={Link}
                   href={`/admin/study/${study.id}`}

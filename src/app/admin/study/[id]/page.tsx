@@ -111,7 +111,8 @@ export default function StudyEditorPage() {
           Copy Link
         </Button>
         <Button
-          color={study.status === "ACTIVE" ? "failure" : "blue"}
+          color={study.status === "ACTIVE" ? "light" : "blue"}
+          className={study.status === "ACTIVE" ? "border-red-500 text-red-500 hover:bg-red-50 dark:border-red-400 dark:text-red-400 dark:hover:bg-red-900/20" : ""}
           onClick={toggleStatus}
         >
           {study.status === "ACTIVE" ? (

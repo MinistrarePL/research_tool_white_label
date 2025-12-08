@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Button, Badge, Select, Label, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from "flowbite-react";
+import { Card, Button, Badge, Select, Label } from "flowbite-react";
 import { HiDownload, HiCheck, HiX } from "react-icons/hi";
 
 type Study = {
@@ -284,36 +284,39 @@ export default function TreeTestingResults({ study }: { study: Study }) {
         
         {filteredResults.length > 0 ? (
           <div className="overflow-x-auto">
-            <Table>
-              <TableHead>
-                <TableHeadCell>Task</TableHeadCell>
-                <TableHeadCell>Participant</TableHeadCell>
-                <TableHeadCell>Selected Answer</TableHeadCell>
-                <TableHeadCell>Correct Answer</TableHeadCell>
-                <TableHeadCell>Result</TableHeadCell>
-                <TableHeadCell>Time</TableHeadCell>
-                <TableHeadCell>Path Taken</TableHeadCell>
-              </TableHead>
-              <TableBody>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left text-gray-500 dark:text-gray-400">
+                <thead className="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
+                  <tr>
+                    <th className="px-6 py-3">Task</th>
+                    <th className="px-6 py-3">Participant</th>
+                    <th className="px-6 py-3">Selected Answer</th>
+                    <th className="px-6 py-3">Correct Answer</th>
+                    <th className="px-6 py-3">Result</th>
+                    <th className="px-6 py-3">Time</th>
+                    <th className="px-6 py-3">Path Taken</th>
+                  </tr>
+                </thead>
+                <tbody>
                 {filteredResults.map((result, index) => {
                   const task = study.tasks.find(t => t.id === result.taskId);
                   const participantIndex = completedParticipants.findIndex(p => p.id === result.participantId);
                   
                   return (
-                    <TableRow key={`${result.taskId}-${result.participantId}-${index}`}>
-                      <TableCell className="font-medium">
+                    <tr key={`${result.taskId}-${result.participantId}-${index}`} className="bg-white border-b dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600">
+                      <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
                         {task?.question || "Unknown Task"}
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-6 py-4">
                         Participant {participantIndex + 1}
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-6 py-4">
                         {getNodeLabel(result.selectedNodeId)}
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-6 py-4">
                         {getCorrectAnswerLabel(result.taskId)}
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-6 py-4">
                         {result.isCorrect ? (
                           <div className="flex items-center text-green-600 dark:text-green-400">
                             <HiCheck className="h-4 w-4 mr-1" />
@@ -325,20 +328,21 @@ export default function TreeTestingResults({ study }: { study: Study }) {
                             Incorrect
                           </div>
                         )}
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="px-6 py-4">
                         {(result.timeSpentMs / 1000).toFixed(1)}s
-                      </TableCell>
-                      <TableCell className="max-w-xs">
+                      </td>
+                      <td className="px-6 py-4 max-w-xs">
                         <div className="text-xs text-gray-500 dark:text-gray-400 truncate" title={getPathText(result.selectedPath)}>
                           {getPathText(result.selectedPath)}
                         </div>
-                      </TableCell>
-                    </TableRow>
+                      </td>
+                    </tr>
                   );
                 })}
-              </TableBody>
-            </Table>
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="text-center py-8">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Card, Button, Badge, Table, TableHead, TableHeadCell, TableBody, TableRow, TableCell } from "flowbite-react";
+import { Card, Button, Badge } from "flowbite-react";
 import { HiDownload } from "react-icons/hi";
 import CardSortingResults from "@/components/card-sorting/CardSortingResults";
 import FirstClickResults from "@/components/first-click/FirstClickResults";
