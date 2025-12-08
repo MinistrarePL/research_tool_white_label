@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button, Card, Badge, Modal, ModalHeader, ModalBody, Label, TextInput, Select, Textarea, Spinner } from "flowbite-react";
 import Link from "next/link";
-import { HiPlus, HiEye, HiTrash, HiClipboard } from "react-icons/hi";
+import { HiPlus, HiPencil, HiTrash, HiClipboard } from "react-icons/hi";
 
 type Study = {
   id: string;
@@ -36,6 +37,7 @@ const statusColors = {
 } as const;
 
 export default function AdminDashboard() {
+  const router = useRouter();
   const [studies, setStudies] = useState<Study[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -66,9 +68,11 @@ export default function AdminDashboard() {
       body: JSON.stringify(formData),
     });
     if (res.ok) {
+      const newStudy = await res.json();
       setShowModal(false);
       setFormData({ title: "", description: "", type: "CARD_SORTING" });
-      fetchStudies();
+      // Redirect to study editor with Content tab active
+      router.push(`/admin/study/${newStudy.id}?tab=content`);
     }
     setCreating(false);
   };
@@ -146,7 +150,7 @@ export default function AdminDashboard() {
                   size="sm"
                   color="gray"
                 >
-                  <HiEye className="mr-1 h-4 w-4" />
+                  <HiPencil className="mr-1 h-4 w-4" />
                   Edit
                 </Button>
                 <Button

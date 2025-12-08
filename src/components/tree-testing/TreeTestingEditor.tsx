@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Button, TextInput, Label, Card, Select } from "flowbite-react";
-import { HiPlus, HiTrash, HiChevronRight, HiChevronDown } from "react-icons/hi";
+import { HiPlus, HiTrash, HiChevronRight, HiChevronDown, HiPencil, HiCheck, HiX } from "react-icons/hi";
 
 type TreeNode = {
   id: string;
@@ -33,12 +33,19 @@ export default function TreeTestingEditor({
   onUpdate: () => void;
 }) {
   const isActive = study.status === "ACTIVE";
-  const [newNodeLabel, setNewNodeLabel] = useState("");
-  const [selectedParent, setSelectedParent] = useState<string>("");
   const [newTaskQuestion, setNewTaskQuestion] = useState("");
   const [newTaskCorrectNode, setNewTaskCorrectNode] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editTaskQuestion, setEditTaskQuestion] = useState("");
+  const [editTaskCorrectNode, setEditTaskCorrectNode] = useState<string>("");
+  
+  // Node editing state
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [editNodeLabel, setEditNodeLabel] = useState("");
+  const [addingChildToNodeId, setAddingChildToNodeId] = useState<string | null>(null);
+  const [newChildLabel, setNewChildLabel] = useState("");
 
   const rootNodes = study.treeNodes.filter((n) => !n.parentId);
 
@@ -56,26 +63,76 @@ export default function TreeTestingEditor({
     setExpandedNodes(newExpanded);
   };
 
-  const addNode = async () => {
-    if (!newNodeLabel.trim()) return;
-    setLoading(true);
-    await fetch(`/api/studies/${study.id}/tree-nodes`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        label: newNodeLabel,
-        parentId: selectedParent || null,
-      }),
-    });
-    setNewNodeLabel("");
-    setLoading(false);
-    onUpdate();
-  };
 
   const deleteNode = async (nodeId: string) => {
     await fetch(`/api/studies/${study.id}/tree-nodes/${nodeId}`, {
       method: "DELETE",
     });
+    onUpdate();
+  };
+
+  const startEditingNode = (node: TreeNode) => {
+    setEditingNodeId(node.id);
+    setEditNodeLabel(node.label);
+  };
+
+  const cancelEditingNode = () => {
+    setEditingNodeId(null);
+    setEditNodeLabel("");
+  };
+
+  const saveNode = async (nodeId: string) => {
+    if (!editNodeLabel.trim()) return;
+    await fetch(`/api/studies/${study.id}/tree-nodes/${nodeId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label: editNodeLabel.trim() }),
+    });
+    cancelEditingNode();
+    onUpdate();
+  };
+
+  const startAddingChild = (parentId: string) => {
+    setAddingChildToNodeId(parentId);
+    setNewChildLabel("");
+    // Expand the parent node
+    setExpandedNodes((prev) => new Set([...prev, parentId]));
+  };
+
+  const cancelAddingChild = () => {
+    setAddingChildToNodeId(null);
+    setNewChildLabel("");
+  };
+
+  const addChildNode = async (parentId: string) => {
+    if (!newChildLabel.trim()) return;
+    setLoading(true);
+    await fetch(`/api/studies/${study.id}/tree-nodes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        label: newChildLabel.trim(),
+        parentId: parentId,
+      }),
+    });
+    cancelAddingChild();
+    setLoading(false);
+    onUpdate();
+  };
+
+  const addRootNode = async () => {
+    if (!newChildLabel.trim()) return;
+    setLoading(true);
+    await fetch(`/api/studies/${study.id}/tree-nodes`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        label: newChildLabel.trim(),
+        parentId: null,
+      }),
+    });
+    cancelAddingChild();
+    setLoading(false);
     onUpdate();
   };
 
@@ -103,18 +160,48 @@ export default function TreeTestingEditor({
     onUpdate();
   };
 
+  const startEditingTask = (task: Task) => {
+    setEditingTaskId(task.id);
+    setEditTaskQuestion(task.question);
+    setEditTaskCorrectNode(task.correctNodeId || "");
+  };
+
+  const cancelEditingTask = () => {
+    setEditingTaskId(null);
+    setEditTaskQuestion("");
+    setEditTaskCorrectNode("");
+  };
+
+  const saveTask = async (taskId: string) => {
+    if (!editTaskQuestion.trim()) return;
+    setLoading(true);
+    await fetch(`/api/studies/${study.id}/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        question: editTaskQuestion.trim(),
+        correctNodeId: editTaskCorrectNode || null,
+      }),
+    });
+    setLoading(false);
+    cancelEditingTask();
+    onUpdate();
+  };
+
   const renderNode = (node: TreeNode, depth: number = 0): React.ReactNode => {
     const children = getChildren(node.id);
     const hasChildren = children.length > 0;
     const isExpanded = expandedNodes.has(node.id);
+    const isEditing = editingNodeId === node.id;
+    const isAddingChild = addingChildToNodeId === node.id;
 
     return (
       <div key={node.id}>
         <div
-          className="flex items-center gap-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded px-2"
+          className="flex items-center gap-1 py-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded px-2 group"
           style={{ paddingLeft: `${depth * 20 + 8}px` }}
         >
-          {hasChildren ? (
+          {hasChildren || isAddingChild ? (
             <button onClick={() => toggleExpand(node.id)} className="p-1">
               {isExpanded ? (
                 <HiChevronDown className="h-4 w-4 text-gray-500" />
@@ -125,18 +212,94 @@ export default function TreeTestingEditor({
           ) : (
             <span className="w-6" />
           )}
-          <span className="flex-1 text-gray-900 dark:text-white">
-            {node.label}
-          </span>
-          <Button
-            size="xs"
-            color="failure"
-            onClick={() => deleteNode(node.id)}
-            disabled={isActive}
-          >
-            <HiTrash className="h-3 w-3" />
-          </Button>
+          
+          {isEditing ? (
+            <div className="flex-1 flex items-center gap-1">
+              <TextInput
+                value={editNodeLabel}
+                onChange={(e) => setEditNodeLabel(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") saveNode(node.id);
+                  if (e.key === "Escape") cancelEditingNode();
+                }}
+                autoFocus
+                sizing="sm"
+                className="flex-1"
+              />
+              <Button size="xs" color="success" onClick={() => saveNode(node.id)}>
+                <HiCheck className="h-3 w-3" />
+              </Button>
+              <Button size="xs" color="gray" onClick={cancelEditingNode}>
+                <HiX className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <span className="flex-1 text-gray-900 dark:text-white">
+                {node.label}
+              </span>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {!isActive && (
+                  <>
+                    <Button
+                      size="xs"
+                      color="light"
+                      onClick={() => startAddingChild(node.id)}
+                      title="Add child node"
+                    >
+                      <HiPlus className="h-3 w-3 text-gray-500" />
+                    </Button>
+                    <Button
+                      size="xs"
+                      color="light"
+                      onClick={() => startEditingNode(node)}
+                      title="Edit label"
+                    >
+                      <HiPencil className="h-3 w-3 text-gray-500" />
+                    </Button>
+                    <Button
+                      size="xs"
+                      color="light"
+                      onClick={() => deleteNode(node.id)}
+                      title="Delete"
+                    >
+                      <HiTrash className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </>
+          )}
         </div>
+        
+        {/* Adding child inline form */}
+        {isAddingChild && isExpanded && (
+          <div
+            className="flex items-center gap-1 py-1 px-2"
+            style={{ paddingLeft: `${(depth + 1) * 20 + 8}px` }}
+          >
+            <span className="w-6" />
+            <TextInput
+              value={newChildLabel}
+              onChange={(e) => setNewChildLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addChildNode(node.id);
+                if (e.key === "Escape") cancelAddingChild();
+              }}
+              placeholder="New child node..."
+              autoFocus
+              sizing="sm"
+              className="flex-1"
+            />
+            <Button size="xs" color="success" onClick={() => addChildNode(node.id)} disabled={loading}>
+              <HiCheck className="h-3 w-3" />
+            </Button>
+            <Button size="xs" color="gray" onClick={cancelAddingChild}>
+              <HiX className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+        
         {isExpanded &&
           children.map((child) => renderNode(child, depth + 1))}
       </div>
@@ -158,44 +321,57 @@ export default function TreeTestingEditor({
           </div>
         )}
 
-        <div className="space-y-3 mb-4">
-          <div>
-            <Label className="mb-2 block">Parent Node</Label>
-            <Select
-              value={selectedParent}
-              onChange={(e) => setSelectedParent(e.target.value)}
-              disabled={isActive}
-            >
-              <option value="">Root level</option>
-              {study.treeNodes.map((node) => (
-                <option key={node.id} value={node.id}>
-                  {node.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex gap-2">
-            <TextInput
-              placeholder="New node label..."
-              value={newNodeLabel}
-              onChange={(e) => setNewNodeLabel(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !isActive && addNode()}
-              className="flex-1"
-              disabled={isActive}
-            />
-            <Button onClick={addNode} disabled={loading || isActive} color="blue">
-              <HiPlus className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-
         <Card className="max-h-[400px] overflow-auto">
-          {rootNodes.length === 0 ? (
-            <p className="text-gray-500 dark:text-gray-400 text-sm text-center py-4">
-              Add nodes to build your navigation tree.
-            </p>
+          {rootNodes.length === 0 && addingChildToNodeId !== "root" ? (
+            <div className="text-center py-4">
+              <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
+                Add nodes to build your navigation tree.
+              </p>
+              {!isActive && (
+                <Button size="sm" color="light" onClick={() => setAddingChildToNodeId("root")}>
+                  <HiPlus className="mr-1 h-4 w-4" />
+                  Add main category
+                </Button>
+              )}
+            </div>
           ) : (
-            rootNodes.map((node) => renderNode(node))
+            <>
+              {rootNodes.map((node) => renderNode(node))}
+              
+              {/* Add main category inline */}
+              {addingChildToNodeId === "root" && (
+                <div className="flex items-center gap-1 py-1 px-2 pl-8">
+                  <TextInput
+                    value={newChildLabel}
+                    onChange={(e) => setNewChildLabel(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") addRootNode();
+                      if (e.key === "Escape") cancelAddingChild();
+                    }}
+                    placeholder="New main category..."
+                    autoFocus
+                    sizing="sm"
+                    className="flex-1"
+                  />
+                  <Button size="xs" color="success" onClick={addRootNode} disabled={loading}>
+                    <HiCheck className="h-3 w-3" />
+                  </Button>
+                  <Button size="xs" color="gray" onClick={cancelAddingChild}>
+                    <HiX className="h-3 w-3" />
+                  </Button>
+                </div>
+              )}
+              
+              {/* Button to add more root nodes */}
+              {rootNodes.length > 0 && addingChildToNodeId !== "root" && !isActive && (
+                <div className="pt-2 pl-8">
+                  <Button size="xs" color="light" onClick={() => setAddingChildToNodeId("root")}>
+                    <HiPlus className="mr-1 h-3 w-3" />
+                    Add main category
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </Card>
       </div>
@@ -239,31 +415,88 @@ export default function TreeTestingEditor({
         <div className="space-y-2">
           {study.tasks.map((task, index) => (
             <Card key={task.id} className="py-2 px-3">
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <span className="text-sm text-gray-500 dark:text-gray-400">
-                    Task {index + 1}
-                  </span>
-                  <p className="text-gray-900 dark:text-white font-medium">
-                    {task.question}
-                  </p>
-                  {task.correctNodeId && (
-                    <p className="text-sm text-green-600 dark:text-green-400">
-                      Correct:{" "}
-                      {study.treeNodes.find((n) => n.id === task.correctNodeId)
-                        ?.label || "Unknown"}
-                    </p>
-                  )}
+              {editingTaskId === task.id ? (
+                <div className="space-y-3">
+                  <div>
+                    <Label className="mb-2 block text-xs">Question</Label>
+                    <TextInput
+                      value={editTaskQuestion}
+                      onChange={(e) => setEditTaskQuestion(e.target.value)}
+                      placeholder="Where would you find...?"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <Label className="mb-2 block text-xs">Correct Answer (optional)</Label>
+                    <Select
+                      value={editTaskCorrectNode}
+                      onChange={(e) => setEditTaskCorrectNode(e.target.value)}
+                      disabled={loading}
+                    >
+                      <option value="">No correct answer</option>
+                      {study.treeNodes.map((node) => (
+                        <option key={node.id} value={node.id}>
+                          {node.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    <Button
+                      size="xs"
+                      color="gray"
+                      onClick={cancelEditingTask}
+                      disabled={loading}
+                    >
+                      <HiX className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="xs"
+                      color="success"
+                      onClick={() => saveTask(task.id)}
+                      disabled={loading || !editTaskQuestion.trim()}
+                    >
+                      <HiCheck className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  size="xs"
-                  color="failure"
-                  onClick={() => deleteTask(task.id)}
-                  disabled={isActive}
-                >
-                  <HiTrash className="h-4 w-4" />
-                </Button>
-              </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      Task {index + 1}
+                    </span>
+                    <p className="text-gray-900 dark:text-white font-medium">
+                      {task.question}
+                    </p>
+                    {task.correctNodeId && (
+                      <p className="text-sm text-green-600 dark:text-green-400">
+                        Correct:{" "}
+                        {study.treeNodes.find((n) => n.id === task.correctNodeId)
+                          ?.label || "Unknown"}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button
+                      size="xs"
+                      color="light"
+                      onClick={() => startEditingTask(task)}
+                      disabled={isActive}
+                    >
+                      <HiPencil className="h-4 w-4 text-gray-500" />
+                    </Button>
+                    <Button
+                      size="xs"
+                      color="light"
+                      onClick={() => deleteTask(task.id)}
+                      disabled={isActive}
+                    >
+                      <HiTrash className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </Card>
           ))}
         </div>

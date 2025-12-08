@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Button, Tabs, TabItem, Badge, Spinner, TextInput, Label, Textarea } from "flowbite-react";
 import { HiArrowLeft, HiPlay, HiStop, HiLink } from "react-icons/hi";
 import Link from "next/link";
@@ -27,12 +27,18 @@ type Study = {
 
 export default function StudyEditorPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const [study, setStudy] = useState<Study | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<number>(0);
 
   useEffect(() => {
     fetchStudy();
-  }, [params.id]);
+    const tab = searchParams.get("tab");
+    if (tab === "content") {
+      setActiveTab(1); // Content is the second tab (index 1)
+    }
+  }, [params.id, searchParams]);
 
   const fetchStudy = async () => {
     const res = await fetch(`/api/studies/${params.id}`);
@@ -120,8 +126,8 @@ export default function StudyEditorPage() {
         </Button>
       </div>
 
-      <Tabs aria-label="Study tabs" variant="underline">
-        <TabItem active title="Settings">
+      <Tabs aria-label="Study tabs" variant="underline" onActiveTabChange={setActiveTab}>
+        <TabItem active={activeTab === 0} title="Settings">
           <div className="max-w-2xl space-y-4 mt-4">
             <div>
               <Label htmlFor="title" className="mb-2 block">Title</Label>
@@ -143,7 +149,7 @@ export default function StudyEditorPage() {
           </div>
         </TabItem>
 
-        <TabItem title="Content">
+        <TabItem active={activeTab === 1} title="Content">
           <div className="mt-4">
             {study.type === "CARD_SORTING" && (
               <CardSortingEditor study={study} onUpdate={fetchStudy} />
@@ -157,7 +163,7 @@ export default function StudyEditorPage() {
           </div>
         </TabItem>
 
-        <TabItem title={`Results (${study.participants.length})`}>
+        <TabItem active={activeTab === 2} title={`Results (${study.participants.length})`}>
           <div className="mt-4">
             <StudyResults study={study} />
           </div>
