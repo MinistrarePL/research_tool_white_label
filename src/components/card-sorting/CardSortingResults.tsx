@@ -21,13 +21,12 @@ type Study = {
   }[];
 };
 
-type CategoryType = "all" | "predefined" | "renamed" | "user-created";
+type CategoryType = "all" | "predefined" | "user-created";
 
 type CategoryGroup = {
-  originalName: string;
-  type: "predefined" | "renamed" | "user-created";
-  variants: { name: string; participantIds: string[] }[];
-  cards: Array<{ cardId: string; participantId: string; label: string; usedName: string }>;
+  name: string;
+  type: "predefined" | "user-created";
+  cards: Array<{ cardId: string; participantId: string; label: string }>;
 };
 
 // Predefined colors for participants
@@ -50,7 +49,7 @@ export default function CardSortingResults({ study }: { study: Study }) {
   
   const completedParticipants = study.participants.filter(p => p.completedAt);
 
-  // Build category groups with variants
+  // Build category groups - predefined vs user-created
   const categoryGroups = useMemo(() => {
     const groups = new Map<string, CategoryGroup>();
     
@@ -60,57 +59,24 @@ export default function CardSortingResults({ study }: { study: Study }) {
     completedParticipants.forEach(p => {
       p.cardSortResults.forEach(result => {
         const usedName = result.categoryName || "";
-        const originalName = result.originalCategoryName || result.categoryName || "";
         
         if (!usedName) return;
         
-        // Determine category type
-        let type: "predefined" | "renamed" | "user-created";
-        let groupKey: string;
+        // Determine category type:
+        // - predefined: name matches original AND matches predefined category
+        // - user-created: everything else (including renamed predefined categories)
+        const isPredefined = result.originalCategoryName === result.categoryName && predefinedNames.has(usedName);
+        const type: "predefined" | "user-created" = isPredefined ? "predefined" : "user-created";
         
-        if (result.originalCategoryName) {
-          // Has original name - it's either predefined or renamed
-          if (result.originalCategoryName === result.categoryName) {
-            type = "predefined";
-          } else {
-            type = "renamed";
-          }
-          groupKey = result.originalCategoryName;
-        } else if (predefinedNames.has(usedName)) {
-          // No original name but matches predefined - it's predefined
-          type = "predefined";
-          groupKey = usedName;
-        } else {
-          // User-created category
-          type = "user-created";
-          groupKey = usedName;
-        }
-        
-        if (!groups.has(groupKey)) {
-          groups.set(groupKey, {
-            originalName: groupKey,
+        if (!groups.has(usedName)) {
+          groups.set(usedName, {
+            name: usedName,
             type,
-            variants: [],
             cards: [],
           });
         }
         
-        const group = groups.get(groupKey)!;
-        
-        // Update type if we find a renamed variant (upgrade from predefined)
-        if (type === "renamed" && group.type === "predefined") {
-          group.type = "renamed";
-        }
-        
-        // Track variant
-        const existingVariant = group.variants.find(v => v.name === usedName);
-        if (existingVariant) {
-          if (!existingVariant.participantIds.includes(p.id)) {
-            existingVariant.participantIds.push(p.id);
-          }
-        } else {
-          group.variants.push({ name: usedName, participantIds: [p.id] });
-        }
+        const group = groups.get(usedName)!;
         
         // Add card
         const card = study.cards.find(c => c.id === result.cardId);
@@ -119,7 +85,6 @@ export default function CardSortingResults({ study }: { study: Study }) {
             cardId: result.cardId,
             participantId: p.id,
             label: card.label,
-            usedName,
           });
         }
       });
@@ -153,8 +118,6 @@ export default function CardSortingResults({ study }: { study: Study }) {
     switch (type) {
       case "predefined":
         return <Badge color="blue" size="xs">predefined</Badge>;
-      case "renamed":
-        return <Badge color="yellow" size="xs">renamed</Badge>;
       case "user-created":
         return <Badge color="green" size="xs">user-created</Badge>;
     }
@@ -165,7 +128,6 @@ export default function CardSortingResults({ study }: { study: Study }) {
     return {
       all: categoryGroups.length,
       predefined: categoryGroups.filter(g => g.type === "predefined").length,
-      renamed: categoryGroups.filter(g => g.type === "renamed").length,
       "user-created": categoryGroups.filter(g => g.type === "user-created").length,
     };
   }, [categoryGroups]);
@@ -280,7 +242,6 @@ export default function CardSortingResults({ study }: { study: Study }) {
           >
             <option value="all">All ({categoryCounts.all})</option>
             <option value="predefined">Predefined ({categoryCounts.predefined})</option>
-            <option value="renamed">Renamed ({categoryCounts.renamed})</option>
             <option value="user-created">User-created ({categoryCounts["user-created"]})</option>
           </Select>
         </div>
@@ -303,16 +264,14 @@ export default function CardSortingResults({ study }: { study: Study }) {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredGroups.map((group) => {
           const filteredCards = getFilteredCards(group);
-          const hasVariants = group.variants.length > 1 || 
-            (group.variants.length === 1 && group.variants[0].name !== group.originalName);
           
           return (
-            <Card key={group.originalName} className="flex flex-col">
-              <div className="flex justify-between items-start mb-2">
+            <Card key={group.name} className="flex flex-col">
+              <div className="flex justify-between items-start mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h4 className="font-semibold text-gray-900 dark:text-white">
-                      {group.originalName}
+                      {group.name}
                     </h4>
                     {getCategoryTypeBadge(group.type)}
                   </div>
@@ -321,22 +280,6 @@ export default function CardSortingResults({ study }: { study: Study }) {
                   {filteredCards.length}
                 </Badge>
               </div>
-              
-              {/* Variants info */}
-              {hasVariants && (
-                <div className="mb-3 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 rounded p-2">
-                  <span className="font-medium">Variants: </span>
-                  {group.variants
-                    .filter(v => v.name !== group.originalName)
-                    .map((variant, idx) => (
-                      <span key={variant.name}>
-                        {idx > 0 && ", "}
-                        &quot;{variant.name}&quot;
-                        <span className="text-gray-400"> (P{variant.participantIds.map(id => getParticipantNumber(id)).join(", P")})</span>
-                      </span>
-                    ))}
-                </div>
-              )}
               
               <div className="space-y-2 flex-1 min-h-[120px] flex flex-col">
                 {filteredCards.length > 0 ? (
@@ -354,9 +297,6 @@ export default function CardSortingResults({ study }: { study: Study }) {
                         {selectedParticipant === "all" && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                             P{getParticipantNumber(card.participantId)}
-                            {card.usedName !== group.originalName && (
-                              <span className="ml-1 italic">→ &quot;{card.usedName}&quot;</span>
-                            )}
                           </div>
                         )}
                       </div>
