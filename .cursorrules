@@ -1,0 +1,175 @@
+# UX Research Tool - AI Assistant Instructions
+
+You are working on a UX Research Tool - a self-hosted platform for conducting Card Sorting, Tree Testing, and First-Click studies.
+
+## Project Overview
+
+This is a **Next.js 16** application with **App Router**, **TypeScript**, **Tailwind CSS 4**, and **Prisma ORM** with SQLite database.
+
+### Core Functionality
+
+1. **Card Sorting** - Users sort cards into categories
+   - Types: Open (users create categories), Closed (predefined), Hybrid (both)
+   - Components in: `src/components/card-sorting/`
+
+2. **Tree Testing** - Users navigate a tree structure to find items
+   - Supports JSON import for tree structure
+   - Components in: `src/components/tree-testing/`
+
+3. **First-Click Testing** - Users click on screenshots
+   - Includes heatmap visualization using Konva.js
+   - Components in: `src/components/first-click/`
+
+## Tech Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS 4 + Flowbite React components
+- **Database**: SQLite (local) / PostgreSQL (production) via Prisma
+- **Auth**: NextAuth.js with credentials provider
+- **Drag & Drop**: @dnd-kit/core, @dnd-kit/sortable
+- **Canvas**: react-konva (for heatmaps)
+
+## Project Structure
+
+```
+src/
+├── app/                      # Next.js App Router pages
+│   ├── (auth)/login/        # Login page
+│   ├── admin/               # Admin dashboard (protected)
+│   │   ├── page.tsx         # Studies list with filter tabs
+│   │   └── study/[id]/      # Study editor
+│   ├── api/                 # API routes (REST)
+│   │   └── studies/         # CRUD for studies, cards, categories, etc.
+│   └── study/[id]/          # Public study page (for participants)
+├── components/
+│   ├── card-sorting/        # CardSortingEditor, CardSortingStudy, CardSortingResults
+│   ├── tree-testing/        # TreeTestingEditor, TreeTestingStudy, TreeTestingResults
+│   ├── first-click/         # FirstClickEditor, FirstClickStudy, FirstClickResults
+│   └── StudyResults.tsx     # Unified results component
+├── lib/
+│   ├── auth.ts              # NextAuth configuration
+│   └── prisma.ts            # Prisma client singleton
+└── middleware.ts            # Auth middleware (protects /admin routes)
+
+prisma/
+├── schema.prisma            # Database schema
+├── seed.ts                  # Admin user seeder
+└── dev.db                   # SQLite database (gitignored)
+```
+
+## Key Patterns
+
+### Component Naming Convention
+- `*Editor.tsx` - Admin-side component for creating/editing study content
+- `*Study.tsx` - Participant-side component for taking the study
+- `*Results.tsx` - Results visualization component
+
+### API Routes Pattern
+All API routes follow REST conventions:
+- `GET /api/studies` - List all studies
+- `POST /api/studies` - Create study
+- `GET /api/studies/[id]` - Get study
+- `PATCH /api/studies/[id]` - Update study
+- `DELETE /api/studies/[id]` - Delete study
+- Nested resources: `/api/studies/[id]/cards`, `/api/studies/[id]/categories`, etc.
+
+### State Management
+- React useState for local state
+- Fetch API for server communication
+- No global state management (Redux/Zustand) - keep it simple
+
+### Styling Guidelines
+- Use Flowbite React components when available (Button, Card, Modal, Badge, etc.)
+- Use Tailwind utility classes for custom styling
+- Support dark mode with `dark:` variants
+- Responsive design with `sm:`, `md:`, `lg:` breakpoints
+
+## Database Schema (Prisma)
+
+Key models:
+- `User` - Admin users
+- `Study` - Research study (has type: CARD_SORTING, TREE_TESTING, FIRST_CLICK)
+- `Card` - Cards for card sorting
+- `Category` - Categories for card sorting
+- `TreeNode` - Nodes in tree testing hierarchy
+- `Task` - Tasks/questions for tree testing and first-click
+- `Participant` - Study participants (anonymous)
+- `CardSortResult`, `TreeTestResult`, `ClickResult` - Results data
+
+## Important Business Rules
+
+1. **Content Locking**: Once a study has responses (completed participants), content editing is locked to maintain data integrity. Only DRAFT status or CLOSED with 0 responses allows editing.
+
+2. **Study Lifecycle**:
+   - DRAFT → Can edit everything
+   - ACTIVE → Collecting responses, editing locked
+   - CLOSED → Study finished, can view results
+
+3. **Participant Flow**:
+   - Participant visits `/study/[id]`
+   - New participant record created
+   - On completion, `completedAt` is set
+   - Only completed participants count as "responses"
+
+## Common Tasks
+
+### Adding a new feature to a study type
+1. Update Prisma schema if needed (`prisma/schema.prisma`)
+2. Run `npm run db:push` to sync database
+3. Update the Editor component
+4. Update the Study component (participant view)
+5. Update the Results component
+
+### Working with the database
+```bash
+npm run db:push      # Push schema changes
+npm run db:seed      # Create/reset admin user
+npm run db:studio    # Visual database browser
+npm run db:generate  # Regenerate Prisma client
+```
+
+### Environment Variables
+Required in `.env`:
+```
+NEXTAUTH_URL=http://localhost:3000
+NEXTAUTH_SECRET=your-secret-key
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=admin123
+```
+
+## Code Style
+
+- Use TypeScript strictly (avoid `any` when possible)
+- Prefer functional components with hooks
+- Use async/await for promises
+- Keep components focused and single-purpose
+- Extract reusable logic into custom hooks or utility functions
+- Use descriptive variable and function names
+
+## Don't Do
+
+- Don't use `any` types without good reason
+- Don't add unnecessary dependencies
+- Don't create global state unless absolutely necessary
+- Don't break existing API contracts
+- Don't commit `.env` files or database files
+- Don't add features without considering mobile responsiveness
+
+## Quick Commands
+
+```bash
+npm run dev          # Start dev server (http://localhost:3000)
+npm run build        # Production build
+npm run lint         # Check for linting errors
+npm run db:studio    # Open database GUI
+```
+
+## When Making Changes
+
+1. Understand the existing patterns in the codebase
+2. Follow the established component structure
+3. Test on both light and dark mode
+4. Ensure mobile responsiveness
+5. Update types when modifying data structures
+6. Consider impact on existing studies/data
