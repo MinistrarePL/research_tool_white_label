@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Badge, Modal, ModalHeader, ModalBody, Label, TextInput, Select, Textarea, Spinner, Toast, ToastToggle } from "flowbite-react";
+import { Button, Card, Badge, Modal, ModalHeader, ModalBody, Label, TextInput, Select, Textarea, Spinner, Toast, ToastToggle, Tabs, TabItem } from "flowbite-react";
 import Link from "next/link";
 import { HiPlus, HiPencil, HiTrash, HiClipboard, HiCheck, HiExclamation } from "react-icons/hi";
 
@@ -40,6 +40,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [studies, setStudies] = useState<Study[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<"ALL" | Study["type"]>("ALL");
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
     title: "",
@@ -97,6 +98,10 @@ export default function AdminDashboard() {
     setTimeout(() => setToast(null), 3000);
   };
 
+  const filteredStudies = activeFilter === "ALL" 
+    ? studies 
+    : studies.filter(study => study.type === activeFilter);
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -117,18 +122,43 @@ export default function AdminDashboard() {
         </Button>
       </div>
 
-      {studies.length === 0 ? (
-        <Card className="text-center py-12">
+      <Tabs aria-label="Study type filter" variant="underline" onActiveTabChange={(tab) => {
+        const filterMap: { [key: number]: "ALL" | Study["type"] } = {
+          0: "ALL",
+          1: "CARD_SORTING",
+          2: "TREE_TESTING",
+          3: "FIRST_CLICK",
+        };
+        setActiveFilter(filterMap[tab] || "ALL");
+      }}>
+        <TabItem active={activeFilter === "ALL"} title={`All (${studies.length})`}>
+          <div></div>
+        </TabItem>
+        <TabItem active={activeFilter === "CARD_SORTING"} title={`Card Sorting (${studies.filter(s => s.type === "CARD_SORTING").length})`}>
+          <div></div>
+        </TabItem>
+        <TabItem active={activeFilter === "TREE_TESTING"} title={`Tree Testing (${studies.filter(s => s.type === "TREE_TESTING").length})`}>
+          <div></div>
+        </TabItem>
+        <TabItem active={activeFilter === "FIRST_CLICK"} title={`First Click (${studies.filter(s => s.type === "FIRST_CLICK").length})`}>
+          <div></div>
+        </TabItem>
+      </Tabs>
+
+      {filteredStudies.length === 0 ? (
+        <Card className="text-center py-12 mt-4">
           <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-            No studies yet
+            {studies.length === 0 ? "No studies yet" : `No ${activeFilter === "ALL" ? "" : studyTypeLabels[activeFilter]} studies`}
           </h3>
           <p className="text-gray-500 dark:text-gray-400">
-            Create your first study to start collecting user insights.
+            {studies.length === 0 
+              ? "Create your first study to start collecting user insights."
+              : `Create a ${activeFilter === "ALL" ? "study" : studyTypeLabels[activeFilter]} study to get started.`}
           </p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {studies.map((study) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+          {filteredStudies.map((study) => (
             <Card key={study.id} className="flex flex-col h-full">
               <div className="flex justify-between items-start mb-2">
                 <Badge color={studyTypeColors[study.type]}>
