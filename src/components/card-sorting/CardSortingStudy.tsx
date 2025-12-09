@@ -198,32 +198,46 @@ export default function CardSortingStudy({
 
     setSubmitting(true);
 
-    const results: any[] = [];
-    for (const [categoryId, cardIds] of Object.entries(categoryCards)) {
-      for (const cardId of cardIds) {
-        const category = userCategories.find((c) => c.id === categoryId);
-        // For HYBRID: check if category was originally predefined
-        const originalCategory = study.categories.find(c => c.id === categoryId);
-        results.push({
-          cardId,
-          categoryId: category?.isPredefined && originalCategory ? categoryId : null,
-          categoryName: category?.name,
-          originalCategoryName: originalCategory?.name || null,
-        });
+    try {
+      const results: any[] = [];
+      for (const [categoryId, cardIds] of Object.entries(categoryCards)) {
+        for (const cardId of cardIds) {
+          const category = userCategories.find((c) => c.id === categoryId);
+          // For HYBRID: check if category was originally predefined
+          const originalCategory = study.categories.find(c => c.id === categoryId);
+          results.push({
+            cardId,
+            categoryId: category?.isPredefined && originalCategory ? categoryId : null,
+            categoryName: category?.name,
+            originalCategoryName: originalCategory?.name || null,
+          });
+        }
       }
+
+      const response = await fetch(`/api/studies/${study.id}/participants`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          participantId,
+          type: "CARD_SORTING",
+          results,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("Failed to submit results:", errorData);
+        showToast("Failed to submit results. Please try again.");
+        setSubmitting(false);
+        return;
+      }
+
+      onComplete();
+    } catch (error) {
+      console.error("Error submitting results:", error);
+      showToast("An error occurred. Please try again.");
+      setSubmitting(false);
     }
-
-    await fetch(`/api/studies/${study.id}/participants`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        participantId,
-        type: "CARD_SORTING",
-        results,
-      }),
-    });
-
-    onComplete();
   };
 
   const activeCard = study.cards.find((c) => c.id === activeId);
