@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, Button, Badge, Select, Label } from "flowbite-react";
 import { HiDownload } from "react-icons/hi";
 
@@ -16,8 +16,18 @@ type Study = {
       cardId: string;
       categoryId: string | null;
       categoryName: string | null;
+      originalCategoryName: string | null;
     }[];
   }[];
+};
+
+type CategoryType = "all" | "predefined" | "renamed" | "user-created";
+
+type CategoryGroup = {
+  originalName: string;
+  type: "predefined" | "renamed" | "user-created";
+  variants: { name: string; participantIds: string[] }[];
+  cards: Array<{ cardId: string; participantId: string; label: string; usedName: string }>;
 };
 
 // Predefined colors for participants
@@ -36,61 +46,129 @@ const participantColors = [
 
 export default function CardSortingResults({ study }: { study: Study }) {
   const [selectedParticipant, setSelectedParticipant] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<CategoryType>("all");
   
   const completedParticipants = study.participants.filter(p => p.completedAt);
-  
-  
-  // Get all unique categories (predefined + user-created)
-  const getAllCategories = () => {
-    const categories = new Set<string>();
+
+  // Build category groups with variants
+  const categoryGroups = useMemo(() => {
+    const groups = new Map<string, CategoryGroup>();
     
-    // Add predefined categories
-    study.categories.forEach(cat => categories.add(cat.name));
+    // Get predefined category names for comparison
+    const predefinedNames = new Set(study.categories.map(c => c.name));
     
-    // Add user-created categories (all categoryName values)
     completedParticipants.forEach(p => {
       p.cardSortResults.forEach(result => {
-        if (result.categoryName) {
-          categories.add(result.categoryName);
-        }
-      });
-    });
-    
-    return Array.from(categories);
-  };
-
-  const getCardsInCategory = (categoryName: string, participantId?: string) => {
-    const participants = participantId && participantId !== "all" 
-      ? completedParticipants.filter(p => p.id === participantId)
-      : completedParticipants;
-    
-    const cards: Array<{ cardId: string; participantId: string; label: string }> = [];
-    
-    participants.forEach(p => {
-      p.cardSortResults.forEach(result => {
-        const resultCategoryName = result.categoryName || 
-          study.categories.find(c => c.id === result.categoryId)?.name;
+        const usedName = result.categoryName || "";
+        const originalName = result.originalCategoryName || result.categoryName || "";
         
-        if (resultCategoryName === categoryName) {
-          const card = study.cards.find(c => c.id === result.cardId);
-          if (card) {
-            cards.push({
-              cardId: result.cardId,
-              participantId: p.id,
-              label: card.label
-            });
+        if (!usedName) return;
+        
+        // Determine category type
+        let type: "predefined" | "renamed" | "user-created";
+        let groupKey: string;
+        
+        if (result.originalCategoryName) {
+          // Has original name - it's either predefined or renamed
+          if (result.originalCategoryName === result.categoryName) {
+            type = "predefined";
+          } else {
+            type = "renamed";
           }
+          groupKey = result.originalCategoryName;
+        } else if (predefinedNames.has(usedName)) {
+          // No original name but matches predefined - it's predefined
+          type = "predefined";
+          groupKey = usedName;
+        } else {
+          // User-created category
+          type = "user-created";
+          groupKey = usedName;
+        }
+        
+        if (!groups.has(groupKey)) {
+          groups.set(groupKey, {
+            originalName: groupKey,
+            type,
+            variants: [],
+            cards: [],
+          });
+        }
+        
+        const group = groups.get(groupKey)!;
+        
+        // Update type if we find a renamed variant (upgrade from predefined)
+        if (type === "renamed" && group.type === "predefined") {
+          group.type = "renamed";
+        }
+        
+        // Track variant
+        const existingVariant = group.variants.find(v => v.name === usedName);
+        if (existingVariant) {
+          if (!existingVariant.participantIds.includes(p.id)) {
+            existingVariant.participantIds.push(p.id);
+          }
+        } else {
+          group.variants.push({ name: usedName, participantIds: [p.id] });
+        }
+        
+        // Add card
+        const card = study.cards.find(c => c.id === result.cardId);
+        if (card) {
+          group.cards.push({
+            cardId: result.cardId,
+            participantId: p.id,
+            label: card.label,
+            usedName,
+          });
         }
       });
     });
     
-    return cards;
+    return Array.from(groups.values());
+  }, [study, completedParticipants]);
+
+  // Filter categories by type
+  const filteredGroups = useMemo(() => {
+    if (categoryFilter === "all") return categoryGroups;
+    return categoryGroups.filter(g => g.type === categoryFilter);
+  }, [categoryGroups, categoryFilter]);
+
+  // Filter by participant
+  const getFilteredCards = (group: CategoryGroup) => {
+    if (selectedParticipant === "all") return group.cards;
+    return group.cards.filter(c => c.participantId === selectedParticipant);
   };
 
   const getParticipantColor = (participantId: string) => {
     const index = completedParticipants.findIndex(p => p.id === participantId);
     return participantColors[index % participantColors.length];
   };
+
+  const getParticipantNumber = (participantId: string) => {
+    return completedParticipants.findIndex(p => p.id === participantId) + 1;
+  };
+
+  const getCategoryTypeBadge = (type: CategoryGroup["type"]) => {
+    switch (type) {
+      case "predefined":
+        return <Badge color="blue" size="xs">predefined</Badge>;
+      case "renamed":
+        return <Badge color="yellow" size="xs">renamed</Badge>;
+      case "user-created":
+        return <Badge color="green" size="xs">user-created</Badge>;
+    }
+  };
+
+  // Count categories by type
+  const categoryCounts = useMemo(() => {
+    return {
+      all: categoryGroups.length,
+      predefined: categoryGroups.filter(g => g.type === "predefined").length,
+      renamed: categoryGroups.filter(g => g.type === "renamed").length,
+      "user-created": categoryGroups.filter(g => g.type === "user-created").length,
+    };
+  }, [categoryGroups]);
 
   const exportCSV = () => {
     let csv = "Card,";
@@ -133,8 +211,8 @@ export default function CardSortingResults({ study }: { study: Study }) {
           cardId: result.cardId,
           cardLabel: study.cards.find(c => c.id === result.cardId)?.label,
           categoryId: result.categoryId,
-          categoryName: result.categoryName || 
-            study.categories.find(c => c.id === result.categoryId)?.name
+          categoryName: result.categoryName,
+          originalCategoryName: result.originalCategoryName,
         }))
       }))
     };
@@ -147,8 +225,6 @@ export default function CardSortingResults({ study }: { study: Study }) {
     a.click();
     URL.revokeObjectURL(url);
   };
-
-  const allCategories = getAllCategories();
 
   return (
     <div className="space-y-6">
@@ -173,27 +249,45 @@ export default function CardSortingResults({ study }: { study: Study }) {
         </div>
       </div>
 
-      {/* Participant Filter */}
-      <div className="max-w-xs">
-        <Label htmlFor="participant-filter" className="mb-2 block">
-          Filter by Participant
-        </Label>
-        <Select
-          id="participant-filter"
-          value={selectedParticipant}
-          onChange={(e) => setSelectedParticipant(e.target.value)}
-        >
-          <option value="all">All Participants</option>
-          {completedParticipants.map((p, index) => (
-            <option key={p.id} value={p.id}>
-              Participant {index + 1}
-            </option>
-          ))}
-        </Select>
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4">
+        <div className="min-w-[200px]">
+          <Label htmlFor="participant-filter" className="mb-2 block">
+            Filter by Participant
+          </Label>
+          <Select
+            id="participant-filter"
+            value={selectedParticipant}
+            onChange={(e) => setSelectedParticipant(e.target.value)}
+          >
+            <option value="all">All Participants</option>
+            {completedParticipants.map((p, index) => (
+              <option key={p.id} value={p.id}>
+                Participant {index + 1}
+              </option>
+            ))}
+          </Select>
+        </div>
+        
+        <div className="min-w-[200px]">
+          <Label htmlFor="category-filter" className="mb-2 block">
+            Filter by Category Type
+          </Label>
+          <Select
+            id="category-filter"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as CategoryType)}
+          >
+            <option value="all">All ({categoryCounts.all})</option>
+            <option value="predefined">Predefined ({categoryCounts.predefined})</option>
+            <option value="renamed">Renamed ({categoryCounts.renamed})</option>
+            <option value="user-created">User-created ({categoryCounts["user-created"]})</option>
+          </Select>
+        </div>
       </div>
 
       {/* Legend */}
-      {selectedParticipant === "all" && (
+      {selectedParticipant === "all" && completedParticipants.length > 1 && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg text-sm">
           <span className="font-medium text-gray-700 dark:text-gray-300">Legend:</span>
           {completedParticipants.map((p, index) => (
@@ -207,24 +301,47 @@ export default function CardSortingResults({ study }: { study: Study }) {
 
       {/* Categories Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {allCategories.map((categoryName) => {
-          const cardsInCategory = getCardsInCategory(categoryName, selectedParticipant);
+        {filteredGroups.map((group) => {
+          const filteredCards = getFilteredCards(group);
+          const hasVariants = group.variants.length > 1 || 
+            (group.variants.length === 1 && group.variants[0].name !== group.originalName);
           
           return (
-            <Card key={categoryName} className="flex flex-col">
-              <div className="flex justify-between items-start mb-3 h-10 flex-shrink-0">
-                <h4 className="font-semibold text-gray-900 dark:text-white flex-1 line-clamp-2 leading-tight">
-                  {categoryName}
-                </h4>
-                <Badge color="gray" size="sm" className="ml-2 flex-shrink-0 mt-0.5">
-                  {cardsInCategory.length}
+            <Card key={group.originalName} className="flex flex-col">
+              <div className="flex justify-between items-start mb-2">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-semibold text-gray-900 dark:text-white">
+                      {group.originalName}
+                    </h4>
+                    {getCategoryTypeBadge(group.type)}
+                  </div>
+                </div>
+                <Badge color="gray" size="sm" className="ml-2 flex-shrink-0">
+                  {filteredCards.length}
                 </Badge>
               </div>
               
-              <div className="space-y-2 flex-1 min-h-[150px] flex flex-col">
-                {cardsInCategory.length > 0 ? (
+              {/* Variants info */}
+              {hasVariants && (
+                <div className="mb-3 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-700/50 rounded p-2">
+                  <span className="font-medium">Variants: </span>
+                  {group.variants
+                    .filter(v => v.name !== group.originalName)
+                    .map((variant, idx) => (
+                      <span key={variant.name}>
+                        {idx > 0 && ", "}
+                        &quot;{variant.name}&quot;
+                        <span className="text-gray-400"> (P{variant.participantIds.map(id => getParticipantNumber(id)).join(", P")})</span>
+                      </span>
+                    ))}
+                </div>
+              )}
+              
+              <div className="space-y-2 flex-1 min-h-[120px] flex flex-col">
+                {filteredCards.length > 0 ? (
                   <>
-                    {cardsInCategory.map((card, index) => (
+                    {filteredCards.map((card, index) => (
                       <div
                         key={`${card.cardId}-${card.participantId}-${index}`}
                         className={`p-2 bg-white dark:bg-gray-700 rounded border-2 ${
@@ -236,14 +353,17 @@ export default function CardSortingResults({ study }: { study: Study }) {
                         {card.label}
                         {selectedParticipant === "all" && (
                           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            P{completedParticipants.findIndex(p => p.id === card.participantId) + 1}
+                            P{getParticipantNumber(card.participantId)}
+                            {card.usedName !== group.originalName && (
+                              <span className="ml-1 italic">→ &quot;{card.usedName}&quot;</span>
+                            )}
                           </div>
                         )}
                       </div>
                     ))}
                   </>
                 ) : (
-                  <div className="flex-1 flex items-center justify-center text-center text-gray-400 dark:text-gray-500">
+                  <div className="flex-1 flex items-center justify-center text-center text-gray-400 dark:text-gray-500 text-sm">
                     No cards in this category
                   </div>
                 )}
@@ -253,10 +373,12 @@ export default function CardSortingResults({ study }: { study: Study }) {
         })}
       </div>
 
-      {allCategories.length === 0 && (
+      {filteredGroups.length === 0 && (
         <Card className="text-center py-12">
           <p className="text-gray-500 dark:text-gray-400">
-            No results available yet.
+            {categoryGroups.length === 0 
+              ? "No results available yet."
+              : "No categories match the selected filter."}
           </p>
         </Card>
       )}

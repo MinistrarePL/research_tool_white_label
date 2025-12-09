@@ -208,6 +208,7 @@ export default function CardSortingStudy({
           cardId,
           categoryId: category?.isPredefined && originalCategory ? categoryId : null,
           categoryName: category?.name,
+          originalCategoryName: originalCategory?.name || null,
         });
       }
     }

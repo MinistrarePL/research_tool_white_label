@@ -37,6 +37,7 @@ export async function PATCH(
           cardId: result.cardId,
           categoryId: result.categoryId,
           categoryName: result.categoryName,
+          originalCategoryName: result.originalCategoryName,
           participantId,
         },
       });

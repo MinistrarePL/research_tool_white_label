@@ -66,14 +66,15 @@ model Category {
 }
 
 model CardSortResult {
-  id            String   @id @default(cuid())
-  cardId        String
-  card          Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
-  categoryId    String?
-  category      Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  categoryName  String?
-  participantId String
-  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  id                   String   @id @default(cuid())
+  cardId               String
+  card                 Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  categoryId           String?
+  category             Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryName         String?
+  originalCategoryName String?
+  participantId        String
+  participant          Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
 }
 
 // Tree Testing Models
