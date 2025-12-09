@@ -91,6 +91,9 @@ export default function StudyEditorPage() {
     CLOSED: "failure",
   } as const;
 
+  const completedResponses = study.participants.filter((p: any) => p.completedAt).length;
+  const canEditContent = study.status === "DRAFT" || (study.status === "CLOSED" && completedResponses === 0);
+
   return (
     <div>
       <div className="flex items-center gap-4 mb-6">
@@ -154,15 +157,23 @@ export default function StudyEditorPage() {
 
         <TabItem active={activeTab === 1} title="Content">
           <div>
+            {!canEditContent && (
+              <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                  <strong>Content editing is locked.</strong> This study has {completedResponses} response{completedResponses !== 1 ? "s" : ""}. 
+                  To maintain data integrity, you cannot modify the content after receiving responses.
+                </p>
+              </div>
+            )}
             {study.type === "CARD_SORTING" && (
-              <CardSortingEditor study={study} onUpdate={fetchStudy} />
+              <CardSortingEditor study={study} onUpdate={fetchStudy} isLocked={!canEditContent} />
             )}
             {study.type === "TREE_TESTING" && (
-              <TreeTestingEditor study={study} onUpdate={fetchStudy} />
+              <TreeTestingEditor study={study} onUpdate={fetchStudy} isLocked={!canEditContent} />
             )}
             {study.type === "FIRST_CLICK" && (
               <div className="mt-4">
-                <FirstClickEditor study={study} onUpdate={fetchStudy} />
+                <FirstClickEditor study={study} onUpdate={fetchStudy} isLocked={!canEditContent} />
               </div>
             )}
           </div>

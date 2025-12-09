@@ -225,11 +225,11 @@ export default function FirstClickResults({ study }: { study: Study }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button color="gray" onClick={exportCSV}>
+          <Button color="gray" outline onClick={exportCSV}>
             <HiDownload className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
-          <Button color="gray" onClick={exportJSON}>
+          <Button color="gray" outline onClick={exportJSON}>
             <HiDownload className="mr-2 h-4 w-4" />
             Export JSON
           </Button>
@@ -305,27 +305,21 @@ export default function FirstClickResults({ study }: { study: Study }) {
           </div>
 
           {selectedParticipant === "all" && completedParticipants.length > 1 && (
-            <div className="mt-4">
-              <h5 className="font-medium text-gray-900 dark:text-white mb-2">
-                Participant Legend
-              </h5>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                {completedParticipants.map((p, index) => {
-                  const colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff", "#ffa500", "#800080"];
-                  const color = colors[index % colors.length];
-                  return (
-                    <div key={p.id} className="flex items-center gap-2">
-                      <div 
-                        className="w-4 h-4 rounded-full border-2 border-white" 
-                        style={{ backgroundColor: color }}
-                      ></div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
-                        Participant {index + 1}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
+            <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-medium text-gray-700 dark:text-gray-300">Legend:</span>
+              {completedParticipants.map((p, index) => {
+                const colors = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff", "#ffa500", "#800080"];
+                const color = colors[index % colors.length];
+                return (
+                  <div key={p.id} className="flex items-center gap-1.5">
+                    <div 
+                      className="w-3 h-3 rounded-full border border-white/50" 
+                      style={{ backgroundColor: color }}
+                    ></div>
+                    <span className="text-gray-600 dark:text-gray-400">P{index + 1}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
         </Card>

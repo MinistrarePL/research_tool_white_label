@@ -145,7 +145,7 @@ export default function AdminDashboard() {
                 </p>
               </div>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-                {study._count.participants} participants
+                {study._count.participants} {study._count.participants === 1 ? "response" : "responses"}
               </p>
               <div className="flex gap-2 mt-4 mt-auto">
                 <Button

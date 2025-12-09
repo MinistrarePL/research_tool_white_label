@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { Button, TextInput, Label, Card, Badge, Radio } from "flowbite-react";
+import { Button, TextInput, Label, Card, Badge, Radio, Modal, ModalHeader, ModalBody } from "flowbite-react";
 import { HiPlus, HiTrash } from "react-icons/hi";
 import SortableAdminCard from "./SortableAdminCard";
 import SortableCategoryCard from "./SortableCategoryCard";
@@ -46,11 +46,14 @@ type Study = {
 export default function CardSortingEditor({
   study,
   onUpdate,
+  isLocked = false,
 }: {
   study: Study;
   onUpdate: () => void;
+  isLocked?: boolean;
 }) {
   const isActive = study.status === "ACTIVE";
+  const isDisabled = isActive || isLocked;
   const [newCard, setNewCard] = useState("");
   const [newCategory, setNewCategory] = useState("");
   const [loading, setLoading] = useState(false);
@@ -59,6 +62,8 @@ export default function CardSortingEditor({
   );
   const [cards, setCards] = useState<CardType[]>(study.cards);
   const [categories, setCategories] = useState<CategoryType[]>(study.categories);
+  const [showDeleteCardsModal, setShowDeleteCardsModal] = useState(false);
+  const [showDeleteCategoriesModal, setShowDeleteCategoriesModal] = useState(false);
 
   useEffect(() => {
     setCards(study.cards);
@@ -109,6 +114,20 @@ export default function CardSortingEditor({
     onUpdate();
   };
 
+  const deleteAllCards = async () => {
+    setShowDeleteCardsModal(false);
+    setLoading(true);
+    await Promise.all(
+      cards.map((card) =>
+        fetch(`/api/studies/${study.id}/cards/${card.id}`, {
+          method: "DELETE",
+        })
+      )
+    );
+    setLoading(false);
+    onUpdate();
+  };
+
   const addCategory = async () => {
     if (!newCategory.trim()) return;
     setLoading(true);
@@ -126,6 +145,20 @@ export default function CardSortingEditor({
     await fetch(`/api/studies/${study.id}/categories/${categoryId}`, {
       method: "DELETE",
     });
+    onUpdate();
+  };
+
+  const deleteAllCategories = async () => {
+    setShowDeleteCategoriesModal(false);
+    setLoading(true);
+    await Promise.all(
+      categories.map((category) =>
+        fetch(`/api/studies/${study.id}/categories/${category.id}`, {
+          method: "DELETE",
+        })
+      )
+    );
+    setLoading(false);
     onUpdate();
   };
 
@@ -206,27 +239,20 @@ export default function CardSortingEditor({
         <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
           Add cards that participants will sort into categories.
         </p>
-        {isActive && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              <strong>Study is active:</strong> Editing is disabled. Stop the study to make changes.
-            </p>
-          </div>
-        )}
         <div className="flex gap-2 mb-4">
           <TextInput
             placeholder="Add new card..."
             value={newCard}
             onChange={(e) => setNewCard(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !isActive && addCard()}
+            onKeyDown={(e) => e.key === "Enter" && !isDisabled && addCard()}
             className="flex-1"
-            disabled={isActive}
+            disabled={isDisabled}
           />
-          <Button onClick={addCard} disabled={loading || isActive} color="blue">
+          <Button onClick={addCard} disabled={loading || isDisabled} color="blue">
             <HiPlus className="h-5 w-5" />
           </Button>
         </div>
-        {isActive ? (
+        {isDisabled ? (
           <div className="space-y-2">
             {cards.map((card) => (
               <Card key={card.id} className="py-2 px-3">
@@ -236,7 +262,7 @@ export default function CardSortingEditor({
                     size="xs"
                     color="failure"
                     onClick={() => deleteCard(card.id)}
-                    disabled={isActive}
+                    disabled={isDisabled}
                   >
                     <HiTrash className="h-4 w-4" />
                   </Button>
@@ -262,12 +288,19 @@ export default function CardSortingEditor({
                     label={card.label}
                     onDelete={() => deleteCard(card.id)}
                     onEdit={(newLabel) => editCard(card.id, newLabel)}
-                    disabled={isActive}
+                    disabled={isDisabled}
                   />
                 ))}
               </div>
             </SortableContext>
           </DndContext>
+        )}
+        {cards.length > 0 && !isDisabled && (
+          <div className="mt-4">
+            <Button size="xs" color="failure" outline onClick={() => setShowDeleteCardsModal(true)} disabled={loading}>
+              Delete All
+            </Button>
+          </div>
         )}
       </div>
 
@@ -289,9 +322,9 @@ export default function CardSortingEditor({
                 value="OPEN"
                 checked={sortingType === "OPEN"}
                 onChange={(e) => updateSortingType(e.target.value)}
-                disabled={isActive}
+                disabled={isDisabled}
               />
-              <Label htmlFor="open" className={isActive ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
+              <Label htmlFor="open" className={isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
                 <span className="font-medium">Open</span> - Participants create their own categories
               </Label>
             </div>
@@ -302,9 +335,9 @@ export default function CardSortingEditor({
                 value="CLOSED"
                 checked={sortingType === "CLOSED"}
                 onChange={(e) => updateSortingType(e.target.value)}
-                disabled={isActive}
+                disabled={isDisabled}
               />
-              <Label htmlFor="closed" className={isActive ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
+              <Label htmlFor="closed" className={isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
                 <span className="font-medium">Closed</span> - Only predefined categories
               </Label>
             </div>
@@ -315,9 +348,9 @@ export default function CardSortingEditor({
                 value="HYBRID"
                 checked={sortingType === "HYBRID"}
                 onChange={(e) => updateSortingType(e.target.value)}
-                disabled={isActive}
+                disabled={isDisabled}
               />
-              <Label htmlFor="hybrid" className={isActive ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
+              <Label htmlFor="hybrid" className={isDisabled ? "cursor-not-allowed opacity-50" : "cursor-pointer"}>
                 <span className="font-medium">Hybrid</span> - Participants can modify predefined categories
               </Label>
             </div>
@@ -348,15 +381,15 @@ export default function CardSortingEditor({
                 placeholder="Add category..."
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && !isActive && addCategory()}
+                onKeyDown={(e) => e.key === "Enter" && !isDisabled && addCategory()}
                 className="flex-1"
-                disabled={isActive}
+                disabled={isDisabled}
               />
-              <Button onClick={addCategory} disabled={loading || isActive} color="blue">
+              <Button onClick={addCategory} disabled={loading || isDisabled} color="blue">
                 <HiPlus className="h-5 w-5" />
               </Button>
             </div>
-            {isActive ? (
+            {isDisabled ? (
               <div className="space-y-2">
                 {categories.map((category) => (
                   <Card key={category.id} className="py-2 px-3">
@@ -366,7 +399,7 @@ export default function CardSortingEditor({
                         size="xs"
                         color="failure"
                         onClick={() => deleteCategory(category.id)}
-                        disabled={isActive}
+                        disabled={isDisabled}
                       >
                         <HiTrash className="h-4 w-4" />
                       </Button>
@@ -399,7 +432,7 @@ export default function CardSortingEditor({
                         name={category.name}
                         onDelete={() => deleteCategory(category.id)}
                         onEdit={(newName) => editCategory(category.id, newName)}
-                        disabled={isActive}
+                        disabled={isDisabled}
                       />
                     ))}
                     {categories.length === 0 && (
@@ -413,9 +446,52 @@ export default function CardSortingEditor({
                 </SortableContext>
               </DndContext>
             )}
+            {categories.length > 0 && !isDisabled && sortingType !== "OPEN" && (
+              <div className="mt-4">
+                <Button size="xs" color="failure" outline onClick={() => setShowDeleteCategoriesModal(true)} disabled={loading}>
+                  Delete All
+                </Button>
+              </div>
+            )}
           </>
         )}
       </div>
+
+      {/* Delete All Cards Modal */}
+      <Modal show={showDeleteCardsModal} onClose={() => setShowDeleteCardsModal(false)}>
+        <ModalHeader>Delete All Cards</ModalHeader>
+        <ModalBody>
+          <p className="text-gray-500 dark:text-gray-400">
+            Are you sure you want to delete all cards? This action cannot be undone.
+          </p>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button color="gray" onClick={() => setShowDeleteCardsModal(false)}>
+              Cancel
+            </Button>
+            <Button color="failure" onClick={deleteAllCards}>
+              Delete All
+            </Button>
+          </div>
+        </ModalBody>
+      </Modal>
+
+      {/* Delete All Categories Modal */}
+      <Modal show={showDeleteCategoriesModal} onClose={() => setShowDeleteCategoriesModal(false)}>
+        <ModalHeader>Delete All Categories</ModalHeader>
+        <ModalBody>
+          <p className="text-gray-500 dark:text-gray-400">
+            Are you sure you want to delete all categories? This action cannot be undone.
+          </p>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button color="gray" onClick={() => setShowDeleteCategoriesModal(false)}>
+              Cancel
+            </Button>
+            <Button color="failure" onClick={deleteAllCategories}>
+              Delete All
+            </Button>
+          </div>
+        </ModalBody>
+      </Modal>
     </div>
   );
 }

@@ -13,7 +13,11 @@ export async function GET() {
     where: { userId: session.user.id },
     include: {
       _count: {
-        select: { participants: true },
+        select: { 
+          participants: {
+            where: { completedAt: { not: null } }
+          }
+        },
       },
     },
     orderBy: { createdAt: "desc" },

@@ -21,11 +21,14 @@ type Study = {
 export default function FirstClickEditor({
   study,
   onUpdate,
+  isLocked = false,
 }: {
   study: Study;
   onUpdate: () => void;
+  isLocked?: boolean;
 }) {
   const isActive = study.status === "ACTIVE";
+  const isDisabled = isActive || isLocked;
   const [uploading, setUploading] = useState<string | null>(null);
   const [newTaskQuestion, setNewTaskQuestion] = useState("");
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -173,14 +176,6 @@ export default function FirstClickEditor({
 
   return (
     <div className="space-y-6">
-      {isActive && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            <strong>Study is active:</strong> Editing is disabled. Stop the study to make changes.
-          </p>
-        </div>
-      )}
-
       <div>
         <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-white">
           Tasks ({study.tasks.length})
@@ -194,12 +189,12 @@ export default function FirstClickEditor({
           <TextInput
             value={newTaskQuestion}
             onChange={(e) => setNewTaskQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !isActive && addTask()}
+            onKeyDown={(e) => e.key === "Enter" && !isDisabled && addTask()}
             placeholder="Where would you click to...?"
             className="flex-1"
-            disabled={isActive}
+            disabled={isDisabled}
           />
-          <Button onClick={addTask} color="blue" disabled={isActive || !newTaskQuestion.trim()}>
+          <Button onClick={addTask} color="blue" disabled={isDisabled || !newTaskQuestion.trim()}>
             <HiPlus className="mr-1 h-5 w-5" />
             Add Task
           </Button>
@@ -245,7 +240,7 @@ export default function FirstClickEditor({
                       size="xs"
                       color="light"
                       onClick={() => startEditing(task)}
-                      disabled={isActive}
+                      disabled={isDisabled}
                     >
                       <HiPencil className="h-4 w-4 text-gray-500" />
                     </Button>
@@ -253,7 +248,7 @@ export default function FirstClickEditor({
                       size="xs"
                       color="light"
                       onClick={() => confirmDeleteTask(task.id)}
-                      disabled={isActive}
+                      disabled={isDisabled}
                     >
                       <HiTrash className="h-4 w-4 text-gray-500 hover:text-red-500" />
                     </Button>
@@ -285,7 +280,7 @@ export default function FirstClickEditor({
                       const input = fileInputRefs.current[task.id];
                       if (input) input.click();
                     }}
-                    disabled={uploading === task.id || isActive}
+                    disabled={uploading === task.id || isDisabled}
                   >
                     {uploading === task.id ? "Uploading..." : "Upload Image"}
                   </Button>
@@ -322,7 +317,7 @@ export default function FirstClickEditor({
                         const input = fileInputRefs.current[task.id];
                         if (input) input.click();
                       }}
-                      disabled={uploading === task.id || isActive}
+                      disabled={uploading === task.id || isDisabled}
                     >
                       {uploading === task.id ? "Uploading..." : "Replace"}
                     </Button>
@@ -330,7 +325,7 @@ export default function FirstClickEditor({
                       size="xs"
                       color="light"
                       onClick={() => removeImage(task.id)}
-                      disabled={isActive}
+                      disabled={isDisabled}
                     >
                       <HiTrash className="h-4 w-4 text-gray-500 hover:text-red-500" />
                     </Button>

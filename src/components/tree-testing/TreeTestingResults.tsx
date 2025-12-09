@@ -187,11 +187,11 @@ export default function TreeTestingResults({ study }: { study: Study }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button color="gray" onClick={exportCSV}>
+          <Button color="gray" outline onClick={exportCSV}>
             <HiDownload className="mr-2 h-4 w-4" />
             Export CSV
           </Button>
-          <Button color="gray" onClick={exportJSON}>
+          <Button color="gray" outline onClick={exportJSON}>
             <HiDownload className="mr-2 h-4 w-4" />
             Export JSON
           </Button>

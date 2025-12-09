@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -16,8 +16,8 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { Button, TextInput, Label, Card, Select } from "flowbite-react";
-import { HiPlus, HiTrash, HiChevronRight, HiChevronDown, HiPencil, HiCheck, HiX } from "react-icons/hi";
+import { Button, TextInput, Label, Card, Select, Toast, ToastToggle, Modal, ModalHeader, ModalBody } from "flowbite-react";
+import { HiPlus, HiTrash, HiChevronRight, HiChevronDown, HiPencil, HiCheck, HiX, HiUpload } from "react-icons/hi";
 import SortableTask from "./SortableTask";
 
 type TreeNode = {
@@ -44,11 +44,14 @@ type Study = {
 export default function TreeTestingEditor({
   study,
   onUpdate,
+  isLocked = false,
 }: {
   study: Study;
   onUpdate: () => void;
+  isLocked?: boolean;
 }) {
   const isActive = study.status === "ACTIVE";
+  const isDisabled = isActive || isLocked;
   const [newTaskQuestion, setNewTaskQuestion] = useState("");
   const [newTaskCorrectNode, setNewTaskCorrectNode] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -61,6 +64,10 @@ export default function TreeTestingEditor({
   const [editNodeLabel, setEditNodeLabel] = useState("");
   const [addingChildToNodeId, setAddingChildToNodeId] = useState<string | null>(null);
   const [newChildLabel, setNewChildLabel] = useState("");
+  const [toast, setToast] = useState<{ show: boolean; message: string; type?: "success" | "error" } | null>(null);
+  const [showDeleteTasksModal, setShowDeleteTasksModal] = useState(false);
+  const [showDeleteNodesModal, setShowDeleteNodesModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setTasks(study.tasks);
@@ -88,6 +95,23 @@ export default function TreeTestingEditor({
     }
     setExpandedNodes(newExpanded);
   };
+
+  const expandAll = () => {
+    const allNodeIds = study.treeNodes
+      .filter((n) => getChildren(n.id).length > 0)
+      .map((n) => n.id);
+    setExpandedNodes(new Set(allNodeIds));
+  };
+
+  const collapseAll = () => {
+    setExpandedNodes(new Set());
+  };
+
+  const hasExpandableNodes = study.treeNodes.some((n) => getChildren(n.id).length > 0);
+  const allExpanded = hasExpandableNodes && 
+    study.treeNodes
+      .filter((n) => getChildren(n.id).length > 0)
+      .every((n) => expandedNodes.has(n.id));
 
 
   const deleteNode = async (nodeId: string) => {
@@ -164,6 +188,12 @@ export default function TreeTestingEditor({
 
   const addTask = async () => {
     if (!newTaskQuestion.trim()) return;
+    if (!newTaskCorrectNode || newTaskCorrectNode === "") {
+      // Show error toast
+      setToast({ show: true, message: "Please select a correct answer before adding a task.", type: "error" });
+      setTimeout(() => setToast(null), 3000);
+      return;
+    }
     setLoading(true);
     await fetch(`/api/studies/${study.id}/tasks`, {
       method: "POST",
@@ -184,6 +214,131 @@ export default function TreeTestingEditor({
       method: "DELETE",
     });
     onUpdate();
+  };
+
+  const deleteAllTasks = async () => {
+    setShowDeleteTasksModal(false);
+    setLoading(true);
+    await Promise.all(
+      tasks.map((task) =>
+        fetch(`/api/studies/${study.id}/tasks/${task.id}`, {
+          method: "DELETE",
+        })
+      )
+    );
+    setLoading(false);
+    onUpdate();
+  };
+
+  const deleteAllNodes = async () => {
+    setShowDeleteNodesModal(false);
+    setLoading(true);
+    await Promise.all(
+      study.treeNodes.map((node) =>
+        fetch(`/api/studies/${study.id}/tree-nodes/${node.id}`, {
+          method: "DELETE",
+        })
+      )
+    );
+    setLoading(false);
+    onUpdate();
+  };
+
+  type JsonNode = {
+    label: string;
+    children?: JsonNode[];
+  };
+
+  // Convert object-based format to array-based format
+  // Supports: { "Label": [...children] } or { "Label": { "Child": [...] } }
+  const convertObjectToNodes = (obj: Record<string, unknown>): JsonNode[] => {
+    return Object.entries(obj).map(([key, value]) => {
+      const node: JsonNode = { label: key };
+      
+      if (Array.isArray(value)) {
+        // Value is array of strings or objects
+        if (value.length > 0) {
+          if (typeof value[0] === "string") {
+            // Array of strings: ["Item1", "Item2"]
+            node.children = value.map((item) => ({ label: item as string }));
+          } else {
+            // Array of objects: [{ label: "..." }, ...]
+            node.children = value as JsonNode[];
+          }
+        }
+      } else if (typeof value === "object" && value !== null) {
+        // Nested object: { "Child": [...] }
+        node.children = convertObjectToNodes(value as Record<string, unknown>);
+      }
+      
+      return node;
+    });
+  };
+
+  const handleJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      let nodes: JsonNode[];
+
+      if (Array.isArray(json)) {
+        // Standard format: [{ label: "...", children: [...] }]
+        nodes = json as JsonNode[];
+      } else if (typeof json === "object" && json !== null) {
+        // Object format: { "Label": [...] } - convert it
+        nodes = convertObjectToNodes(json as Record<string, unknown>);
+      } else {
+        setToast({ show: true, message: "Invalid JSON format. Please provide an array or object structure.", type: "error" });
+        setTimeout(() => setToast(null), 3000);
+        return;
+      }
+
+      setLoading(true);
+
+      // Recursive function to create nodes
+      const createNodesRecursively = async (
+        nodesToCreate: JsonNode[],
+        parentId: string | null = null
+      ) => {
+        for (let i = 0; i < nodesToCreate.length; i++) {
+          const node = nodesToCreate[i];
+          const response = await fetch(`/api/studies/${study.id}/tree-nodes`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              label: node.label,
+              parentId,
+              order: i,
+            }),
+          });
+          const createdNode = await response.json();
+
+          if (node.children && node.children.length > 0) {
+            await createNodesRecursively(node.children, createdNode.id);
+          }
+        }
+      };
+
+      await createNodesRecursively(nodes);
+
+      setLoading(false);
+      onUpdate();
+      setToast({ show: true, message: "Tree structure imported successfully!", type: "success" });
+      setTimeout(() => setToast(null), 3000);
+    } catch (error) {
+      setLoading(false);
+      setToast({ show: true, message: "Failed to parse JSON file. Please check the format.", type: "error" });
+      setTimeout(() => setToast(null), 3000);
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
   const handleTasksDragEnd = async (event: DragEndEvent) => {
@@ -288,7 +443,7 @@ export default function TreeTestingEditor({
                   {node.label}
                 </span>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {!isActive && (
+                  {!isDisabled && (
                     <>
                       <Button
                         size="xs"
@@ -369,26 +524,50 @@ export default function TreeTestingEditor({
           Tree Structure ({study.treeNodes.length} nodes)
         </h3>
 
-        {isActive && (
-          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 mb-4">
-            <p className="text-sm text-yellow-800 dark:text-yellow-200">
-              <strong>Study is active:</strong> Editing is disabled. Stop the study to make changes.
-            </p>
-          </div>
-        )}
-
         <Card className="min-h-[200px]">
-          {rootNodes.length === 0 && addingChildToNodeId !== "root" ? (
-            <div className="text-center py-4">
-              <p className="text-gray-500 dark:text-gray-400 text-sm mb-2">
-                Add nodes to build your navigation tree.
-              </p>
-              {!isActive && (
-                <Button size="sm" color="light" onClick={() => setAddingChildToNodeId("root")}>
-                  <HiPlus className="mr-1 h-4 w-4" />
+          {/* Header with Expand/Collapse and Add main category buttons */}
+          <div className="flex justify-between items-center mb-3">
+            <div>
+              {hasExpandableNodes && (
+                <>
+                  {allExpanded ? (
+                    <Button size="xs" color="light" onClick={collapseAll}>
+                      Collapse All
+                    </Button>
+                  ) : (
+                    <Button size="xs" color="light" onClick={expandAll}>
+                      Expand All
+                    </Button>
+                  )}
+                </>
+              )}
+            </div>
+            {!isDisabled && (
+              <div className="flex gap-2">
+                <Button size="xs" color="light" onClick={() => fileInputRef.current?.click()}>
+                  <HiUpload className="mr-1 h-3 w-3" />
+                  Upload JSON
+                </Button>
+                <Button size="xs" color="light" onClick={() => setAddingChildToNodeId("root")}>
+                  <HiPlus className="mr-1 h-3 w-3" />
                   Add main category
                 </Button>
-              )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleJsonUpload}
+                  className="hidden"
+                />
+              </div>
+            )}
+          </div>
+
+          {rootNodes.length === 0 && addingChildToNodeId !== "root" ? (
+            <div className="text-center py-4">
+              <p className="text-gray-500 dark:text-gray-400 text-sm">
+                Add nodes to build your navigation tree.
+              </p>
             </div>
           ) : (
             <>
@@ -418,12 +597,11 @@ export default function TreeTestingEditor({
                 </div>
               )}
               
-              {/* Button to add more root nodes */}
-              {rootNodes.length > 0 && addingChildToNodeId !== "root" && !isActive && (
-                <div className="pt-2" style={{ marginTop: '8px' }}>
-                  <Button size="xs" color="light" onClick={() => setAddingChildToNodeId("root")}>
-                    <HiPlus className="mr-1 h-3 w-3" />
-                    Add main category
+              {/* Delete All Nodes button */}
+              {rootNodes.length > 0 && !isDisabled && (
+                <div className="mt-4">
+                  <Button size="xs" color="failure" outline onClick={() => setShowDeleteNodesModal(true)} disabled={loading}>
+                    Delete All
                   </Button>
                 </div>
               )}
@@ -444,7 +622,7 @@ export default function TreeTestingEditor({
               placeholder="Where would you find...?"
               value={newTaskQuestion}
               onChange={(e) => setNewTaskQuestion(e.target.value)}
-              disabled={isActive}
+              disabled={isDisabled}
             />
           </div>
           <div>
@@ -452,7 +630,7 @@ export default function TreeTestingEditor({
             <Select
               value={newTaskCorrectNode}
               onChange={(e) => setNewTaskCorrectNode(e.target.value)}
-              disabled={isActive}
+              disabled={isDisabled}
             >
               <option value="">No correct answer</option>
               {study.treeNodes.map((node) => (
@@ -462,13 +640,17 @@ export default function TreeTestingEditor({
               ))}
             </Select>
           </div>
-          <Button onClick={addTask} disabled={loading || isActive} color="blue">
+          <Button 
+            onClick={addTask} 
+            disabled={loading || isDisabled || !newTaskQuestion.trim() || !newTaskCorrectNode || newTaskCorrectNode === ""} 
+            color="blue"
+          >
             <HiPlus className="mr-2 h-5 w-5" />
             Add Task
           </Button>
         </div>
 
-        {isActive ? (
+        {isDisabled ? (
           <div className="space-y-2">
             {tasks.map((task, index) => (
               <Card key={task.id} className="py-2 px-3">
@@ -493,7 +675,7 @@ export default function TreeTestingEditor({
                       size="xs"
                       color="light"
                       onClick={() => deleteTask(task.id)}
-                      disabled={isActive}
+                      disabled={isDisabled}
                     >
                       <HiTrash className="h-4 w-4 text-gray-500 hover:text-red-500" />
                     </Button>
@@ -520,7 +702,7 @@ export default function TreeTestingEditor({
                     task={task}
                     index={index}
                     treeNodes={study.treeNodes}
-                    isActive={isActive}
+                    isActive={isDisabled}
                     isEditing={editingTaskId === task.id}
                     onEdit={() => startEditingTask(task.id)}
                     onDelete={() => deleteTask(task.id)}
@@ -532,7 +714,67 @@ export default function TreeTestingEditor({
             </SortableContext>
           </DndContext>
         )}
+        {tasks.length > 0 && !isDisabled && (
+          <div className="mt-4">
+            <Button size="xs" color="failure" outline onClick={() => setShowDeleteTasksModal(true)} disabled={loading}>
+              Delete All
+            </Button>
+          </div>
+        )}
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+          <Toast>
+            <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+              toast.type === "success" 
+                ? "bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200" 
+                : "bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200"
+            }`}>
+              {toast.type === "success" ? <HiCheck className="h-5 w-5" /> : <HiX className="h-5 w-5" />}
+            </div>
+            <div className="ml-3 text-sm font-normal">{toast.message}</div>
+            <ToastToggle onDismiss={() => setToast(null)} />
+          </Toast>
+        </div>
+      )}
+
+      {/* Delete All Tasks Modal */}
+      <Modal show={showDeleteTasksModal} onClose={() => setShowDeleteTasksModal(false)}>
+        <ModalHeader>Delete All Tasks</ModalHeader>
+        <ModalBody>
+          <p className="text-gray-500 dark:text-gray-400">
+            Are you sure you want to delete all tasks? This action cannot be undone.
+          </p>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button color="gray" onClick={() => setShowDeleteTasksModal(false)}>
+              Cancel
+            </Button>
+            <Button color="failure" onClick={deleteAllTasks}>
+              Delete All
+            </Button>
+          </div>
+        </ModalBody>
+      </Modal>
+
+      {/* Delete All Nodes Modal */}
+      <Modal show={showDeleteNodesModal} onClose={() => setShowDeleteNodesModal(false)}>
+        <ModalHeader>Delete All Nodes</ModalHeader>
+        <ModalBody>
+          <p className="text-gray-500 dark:text-gray-400">
+            Are you sure you want to delete all nodes in the tree structure? This action cannot be undone.
+          </p>
+          <div className="flex gap-2 justify-end mt-4">
+            <Button color="gray" onClick={() => setShowDeleteNodesModal(false)}>
+              Cancel
+            </Button>
+            <Button color="failure" onClick={deleteAllNodes}>
+              Delete All
+            </Button>
+          </div>
+        </ModalBody>
+      </Modal>
     </div>
   );
 }
