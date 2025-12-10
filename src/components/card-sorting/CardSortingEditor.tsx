@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   DndContext,
   closestCenter,
@@ -16,8 +16,8 @@ import {
   verticalListSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
-import { Button, TextInput, Label, Card, Badge, Radio, Modal, ModalHeader, ModalBody } from "flowbite-react";
-import { HiPlus, HiTrash } from "react-icons/hi";
+import { Button, TextInput, Label, Card, Badge, Radio, Modal, ModalHeader, ModalBody, Toast, ToastToggle } from "flowbite-react";
+import { HiPlus, HiTrash, HiUpload, HiCheck, HiExclamation } from "react-icons/hi";
 import SortableAdminCard from "./SortableAdminCard";
 import SortableCategoryCard from "./SortableCategoryCard";
 
@@ -64,6 +64,9 @@ export default function CardSortingEditor({
   const [categories, setCategories] = useState<CategoryType[]>(study.categories);
   const [showDeleteCardsModal, setShowDeleteCardsModal] = useState(false);
   const [showDeleteCategoriesModal, setShowDeleteCategoriesModal] = useState(false);
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" } | null>(null);
+  const cardsFileInputRef = useRef<HTMLInputElement>(null);
+  const categoriesFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setCards(study.cards);
@@ -230,6 +233,117 @@ export default function CardSortingEditor({
     onUpdate();
   };
 
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleCardsJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      let cardLabels: string[] = [];
+
+      if (Array.isArray(json)) {
+        // Array of strings: ["Card 1", "Card 2"]
+        // or array of objects: [{"label": "Card 1"}, {"label": "Card 2"}]
+        cardLabels = json.map(item => 
+          typeof item === "string" ? item : (item.label || item.name || String(item))
+        );
+      } else {
+        showToast("Invalid JSON format. Expected an array.", "error");
+        return;
+      }
+
+      if (cardLabels.length === 0) {
+        showToast("No cards found in JSON file.", "error");
+        return;
+      }
+
+      setLoading(true);
+
+      for (let i = 0; i < cardLabels.length; i++) {
+        const label = cardLabels[i];
+        if (label && label.trim()) {
+          await fetch(`/api/studies/${study.id}/cards`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ label: label.trim(), order: cards.length + i }),
+          });
+        }
+      }
+
+      setLoading(false);
+      onUpdate();
+      showToast(`${cardLabels.length} cards imported successfully!`, "success");
+    } catch (error) {
+      setLoading(false);
+      showToast("Failed to parse JSON file. Please check the format.", "error");
+    }
+
+    // Reset input
+    if (cardsFileInputRef.current) {
+      cardsFileInputRef.current.value = "";
+    }
+  };
+
+  const handleCategoriesJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      let categoryNames: string[] = [];
+
+      if (Array.isArray(json)) {
+        // Array of strings: ["Cat 1", "Cat 2"]
+        // or array of objects: [{"name": "Cat 1"}, {"name": "Cat 2"}]
+        categoryNames = json.map(item => 
+          typeof item === "string" ? item : (item.name || item.label || String(item))
+        );
+      } else {
+        showToast("Invalid JSON format. Expected an array.", "error");
+        return;
+      }
+
+      if (categoryNames.length === 0) {
+        showToast("No categories found in JSON file.", "error");
+        return;
+      }
+
+      setLoading(true);
+
+      for (let i = 0; i < categoryNames.length; i++) {
+        const name = categoryNames[i];
+        if (name && name.trim()) {
+          await fetch(`/api/studies/${study.id}/categories`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name: name.trim(), order: categories.length + i }),
+          });
+        }
+      }
+
+      setLoading(false);
+      onUpdate();
+      showToast(`${categoryNames.length} categories imported successfully!`, "success");
+    } catch (error) {
+      setLoading(false);
+      showToast("Failed to parse JSON file. Please check the format.", "error");
+    }
+
+    // Reset input
+    if (categoriesFileInputRef.current) {
+      categoriesFileInputRef.current.value = "";
+    }
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-0 lg:divide-x lg:divide-gray-200 dark:lg:divide-gray-700">
       <div className="lg:pr-10 pt-6 pb-6">
@@ -251,6 +365,22 @@ export default function CardSortingEditor({
           <Button onClick={addCard} disabled={loading || isDisabled} color="blue">
             <HiPlus className="h-5 w-5" />
           </Button>
+          <Button 
+            color="gray" 
+            outline 
+            onClick={() => cardsFileInputRef.current?.click()} 
+            disabled={loading || isDisabled}
+          >
+            <HiUpload className="mr-1 h-4 w-4" />
+            Upload JSON
+          </Button>
+          <input
+            ref={cardsFileInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleCardsJsonUpload}
+            className="hidden"
+          />
         </div>
         {isDisabled ? (
           <div className="space-y-2">
@@ -388,6 +518,22 @@ export default function CardSortingEditor({
               <Button onClick={addCategory} disabled={loading || isDisabled} color="blue">
                 <HiPlus className="h-5 w-5" />
               </Button>
+              <Button 
+                color="gray" 
+                outline 
+                onClick={() => categoriesFileInputRef.current?.click()} 
+                disabled={loading || isDisabled}
+              >
+                <HiUpload className="mr-1 h-4 w-4" />
+                Upload JSON
+              </Button>
+              <input
+                ref={categoriesFileInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleCategoriesJsonUpload}
+                className="hidden"
+              />
             </div>
             {isDisabled ? (
               <div className="space-y-2">
@@ -492,6 +638,23 @@ export default function CardSortingEditor({
           </div>
         </ModalBody>
       </Modal>
+
+      {/* Toast notification */}
+      {toast?.show && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50">
+          <Toast className={`shadow-lg border ${toast.type === "success" ? "border-green-200 dark:border-green-700" : "border-red-200 dark:border-red-700"}`}>
+            <div className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+              toast.type === "success" 
+                ? "bg-green-100 text-green-500 dark:bg-green-800 dark:text-green-200"
+                : "bg-red-100 text-red-500 dark:bg-red-800 dark:text-red-200"
+            }`}>
+              {toast.type === "success" ? <HiCheck className="h-5 w-5" /> : <HiExclamation className="h-5 w-5" />}
+            </div>
+            <div className="ml-3 text-sm font-medium">{toast.message}</div>
+            <ToastToggle onDismiss={() => setToast(null)} />
+          </Toast>
+        </div>
+      )}
     </div>
   );
 }
