@@ -238,6 +238,41 @@ export default function CardSortingEditor({
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Extract all string values from nested object structure
+  const extractAllStrings = (obj: unknown): string[] => {
+    const strings: string[] = [];
+    
+    const traverse = (value: unknown) => {
+      if (typeof value === "string") {
+        strings.push(value);
+      } else if (Array.isArray(value)) {
+        value.forEach(traverse);
+      } else if (typeof value === "object" && value !== null) {
+        Object.values(value).forEach(traverse);
+      }
+    };
+    
+    traverse(obj);
+    return strings;
+  };
+
+  // Extract all keys from nested object structure
+  const extractAllKeys = (obj: unknown): string[] => {
+    const keys: string[] = [];
+    
+    const traverse = (value: unknown) => {
+      if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+        Object.keys(value).forEach(key => {
+          keys.push(key);
+          traverse((value as Record<string, unknown>)[key]);
+        });
+      }
+    };
+    
+    traverse(obj);
+    return keys;
+  };
+
   const handleCardsJsonUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -254,10 +289,16 @@ export default function CardSortingEditor({
         cardLabels = json.map(item => 
           typeof item === "string" ? item : (item.label || item.name || String(item))
         );
+      } else if (typeof json === "object" && json !== null) {
+        // Hierarchical object format - extract all string values as cards
+        cardLabels = extractAllStrings(json);
       } else {
-        showToast("Invalid JSON format. Expected an array.", "error");
+        showToast("Invalid JSON format.", "error");
         return;
       }
+
+      // Remove duplicates
+      cardLabels = [...new Set(cardLabels)];
 
       if (cardLabels.length === 0) {
         showToast("No cards found in JSON file.", "error");
@@ -307,10 +348,16 @@ export default function CardSortingEditor({
         categoryNames = json.map(item => 
           typeof item === "string" ? item : (item.name || item.label || String(item))
         );
+      } else if (typeof json === "object" && json !== null) {
+        // Hierarchical object format - extract all keys as categories
+        categoryNames = extractAllKeys(json);
       } else {
-        showToast("Invalid JSON format. Expected an array.", "error");
+        showToast("Invalid JSON format.", "error");
         return;
       }
+      
+      // Remove duplicates
+      categoryNames = [...new Set(categoryNames)];
 
       if (categoryNames.length === 0) {
         showToast("No categories found in JSON file.", "error");
