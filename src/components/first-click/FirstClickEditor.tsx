@@ -290,6 +290,7 @@ export default function FirstClickEditor({
               checked={hasDisplayTime}
               onChange={toggleDisplayTime}
               disabled={isDisabled}
+              color="blue"
               label="Add display time for this study"
             />
           </div>
