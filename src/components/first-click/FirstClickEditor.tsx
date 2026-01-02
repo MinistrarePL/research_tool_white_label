@@ -270,8 +270,8 @@ export default function FirstClickEditor({
         </p>
 
         {/* Add new task */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="flex gap-2 flex-1 max-w-xl">
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="flex gap-2 max-w-xl">
             <TextInput
               value={newTaskQuestion}
               onChange={(e) => setNewTaskQuestion(e.target.value)}
