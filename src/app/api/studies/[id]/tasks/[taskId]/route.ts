@@ -36,6 +36,7 @@ export async function PATCH(
   if (body.question !== undefined) updateData.question = body.question;
   if (body.correctNodeId !== undefined) updateData.correctNodeId = body.correctNodeId;
   if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl;
+  if (body.displayTimeSeconds !== undefined) updateData.displayTimeSeconds = body.displayTimeSeconds;
   if (body.order !== undefined) updateData.order = body.order;
 
   if (Object.keys(updateData).length === 0) {

@@ -91,16 +91,17 @@ model TreeNode {
 }
 
 model Task {
-  id              String   @id @default(cuid())
-  question        String
-  correctNodeId   String?
-  correctNode     TreeNode? @relation("CorrectAnswer", fields: [correctNodeId], references: [id], onDelete: SetNull)
-  imageUrl        String?  // For First Click tasks
-  order           Int      @default(0)
-  studyId         String
-  study           Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
-  treeTestResults TreeTestResult[]
-  clickResults    ClickResult[]
+  id                String   @id @default(cuid())
+  question          String
+  correctNodeId     String?
+  correctNode       TreeNode? @relation("CorrectAnswer", fields: [correctNodeId], references: [id], onDelete: SetNull)
+  imageUrl          String?  // For First Click tasks
+  displayTimeSeconds Int     @default(5) // Time to display screenshot in First Click test (3-12 seconds)
+  order             Int      @default(0)
+  studyId           String
+  study             Study    @relation(fields: [studyId], references: [id], onDelete: Cascade)
+  treeTestResults   TreeTestResult[]
+  clickResults      ClickResult[]
 }
 
 model TreeTestResult {

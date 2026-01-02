@@ -8,6 +8,7 @@ type Task = {
   id: string;
   question: string;
   imageUrl: string | null;
+  displayTimeSeconds: number;
   order: number;
 };
 
@@ -35,23 +36,54 @@ export default function FirstClickEditor({
   const [editQuestion, setEditQuestion] = useState("");
   const [tasks, setTasks] = useState<Task[]>(study.tasks);
   const [previewImages, setPreviewImages] = useState<{ [key: string]: string }>({});
+  const [displayTimes, setDisplayTimes] = useState<{ [key: string]: number }>({});
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; taskId: string | null }>({ show: false, taskId: null });
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "error" | "success" } | null>(null);
 
   useEffect(() => {
+    // Always sync tasks from study
     setTasks(study.tasks);
+    
+    // Initialize display times from tasks, but preserve existing local values
+    setDisplayTimes((prev) => {
+      const times: { [key: string]: number } = { ...prev };
+      study.tasks.forEach((task) => {
+        // Only initialize if not already set locally
+        if (!(task.id in times)) {
+          times[task.id] = task.displayTimeSeconds ?? 5;
+        }
+      });
+      return times;
+    });
   }, [study.tasks]);
 
   const addTask = async () => {
     if (!newTaskQuestion.trim()) return;
-    await fetch(`/api/studies/${study.id}/tasks`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ question: newTaskQuestion }),
-    });
-    setNewTaskQuestion("");
-    onUpdate();
+    const questionToAdd = newTaskQuestion.trim();
+    setNewTaskQuestion(""); // Clear input immediately for better UX
+    
+    try {
+      const res = await fetch(`/api/studies/${study.id}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question: questionToAdd, displayTimeSeconds: 5 }),
+      });
+      
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({ error: "Failed to add task" }));
+        showToast(errorData.error || "Failed to add task", "error");
+        setNewTaskQuestion(questionToAdd); // Restore question on error
+        return;
+      }
+      
+      // Refresh from server to get updated study data
+      onUpdate();
+    } catch (error) {
+      console.error("Error adding task:", error);
+      showToast("Error adding task. Please try again.", "error");
+      setNewTaskQuestion(questionToAdd); // Restore question on error
+    }
   };
 
   const updateTask = async (taskId: string, question: string) => {
@@ -167,6 +199,39 @@ export default function FirstClickEditor({
       body: JSON.stringify({ imageUrl: null }),
     });
     onUpdate();
+  };
+
+  const updateDisplayTime = async (taskId: string, seconds: number) => {
+    // Validate: min 3, max 12 seconds
+    const clampedSeconds = Math.max(3, Math.min(12, seconds));
+    // Update local state first
+    setDisplayTimes((prev) => ({ ...prev, [taskId]: clampedSeconds }));
+    
+    await fetch(`/api/studies/${study.id}/tasks/${taskId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ displayTimeSeconds: clampedSeconds }),
+    });
+    
+    // Update tasks state locally without calling onUpdate to avoid reset
+    setTasks((prevTasks) =>
+      prevTasks.map((t) =>
+        t.id === taskId ? { ...t, displayTimeSeconds: clampedSeconds } : t
+      )
+    );
+  };
+
+  const handleDisplayTimeChange = (taskId: string, value: string) => {
+    const numValue = parseInt(value) || 5;
+    const clampedValue = Math.max(3, Math.min(12, numValue));
+    setDisplayTimes((prev) => ({ ...prev, [taskId]: clampedValue }));
+  };
+
+  const handleDisplayTimeBlur = (taskId: string, value: string) => {
+    const numValue = parseInt(value) || 5;
+    const clampedValue = Math.max(3, Math.min(12, numValue));
+    setDisplayTimes((prev) => ({ ...prev, [taskId]: clampedValue }));
+    updateDisplayTime(taskId, clampedValue);
   };
 
   const startEditing = (task: Task) => {
@@ -299,36 +364,59 @@ export default function FirstClickEditor({
                       </div>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <input
-                      ref={(el) => {
-                        if (el) fileInputRefs.current[task.id] = el;
-                      }}
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(task.id, e)}
-                      className="hidden"
-                      key={`replace-${task.id}`}
-                    />
-                    <Button
-                      size="xs"
-                      color="light"
-                      onClick={() => {
-                        const input = fileInputRefs.current[task.id];
-                        if (input) input.click();
-                      }}
-                      disabled={uploading === task.id || isDisabled}
-                    >
-                      {uploading === task.id ? "Uploading..." : "Replace"}
-                    </Button>
-                    <Button
-                      size="xs"
-                      color="light"
-                      onClick={() => removeImage(task.id)}
-                      disabled={isDisabled}
-                    >
-                      <HiTrash className="h-4 w-4 text-gray-500 hover:text-red-500" />
-                    </Button>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex gap-2">
+                      <input
+                        ref={(el) => {
+                          if (el) fileInputRefs.current[task.id] = el;
+                        }}
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(task.id, e)}
+                        className="hidden"
+                        key={`replace-${task.id}`}
+                      />
+                      <Button
+                        size="xs"
+                        color="light"
+                        onClick={() => {
+                          const input = fileInputRefs.current[task.id];
+                          if (input) input.click();
+                        }}
+                        disabled={uploading === task.id || isDisabled}
+                      >
+                        {uploading === task.id ? "Uploading..." : "Replace"}
+                      </Button>
+                      <Button
+                        size="xs"
+                        color="light"
+                        onClick={() => removeImage(task.id)}
+                        disabled={isDisabled}
+                      >
+                        <HiTrash className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor={`display-time-${task.id}`} className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                        Display time (seconds):
+                      </Label>
+                      <TextInput
+                        id={`display-time-${task.id}`}
+                        type="number"
+                        min={3}
+                        max={12}
+                        value={displayTimes[task.id] ?? task.displayTimeSeconds ?? 5}
+                        onChange={(e) => handleDisplayTimeChange(task.id, e.target.value)}
+                        onBlur={(e) => handleDisplayTimeBlur(task.id, e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            handleDisplayTimeBlur(task.id, (e.target as HTMLInputElement).value);
+                          }
+                        }}
+                        className="w-20"
+                        disabled={isDisabled}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
