@@ -39,6 +39,7 @@ model Study {
   
   // First Click specific
   imageUrl    String?
+  hasDisplayTime Boolean @default(false) // Enable timed display for First Click tasks
   
   // Results
   participants Participant[]

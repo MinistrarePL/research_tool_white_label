@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Button, Label, TextInput, Card, Modal, ModalHeader, ModalBody, Toast, ToastToggle } from "flowbite-react";
+import { Button, Label, TextInput, Card, Modal, ModalHeader, ModalBody, Toast, ToastToggle, ToggleSwitch } from "flowbite-react";
 import { HiUpload, HiTrash, HiPlus, HiPencil, HiCheck, HiX, HiExclamation } from "react-icons/hi";
 
 type Task = {
@@ -16,6 +16,7 @@ type Study = {
   id: string;
   status?: string;
   imageUrl: string | null;
+  hasDisplayTime?: boolean;
   tasks: Task[];
 };
 
@@ -40,10 +41,14 @@ export default function FirstClickEditor({
   const fileInputRefs = useRef<{ [key: string]: HTMLInputElement | null }>({});
   const [deleteModal, setDeleteModal] = useState<{ show: boolean; taskId: string | null }>({ show: false, taskId: null });
   const [toast, setToast] = useState<{ show: boolean; message: string; type: "error" | "success" } | null>(null);
+  const [hasDisplayTime, setHasDisplayTime] = useState(study.hasDisplayTime ?? false);
 
   useEffect(() => {
     // Always sync tasks from study
     setTasks(study.tasks);
+    
+    // Sync hasDisplayTime from study
+    setHasDisplayTime(study.hasDisplayTime ?? false);
     
     // Initialize display times from tasks, but preserve existing local values
     setDisplayTimes((prev) => {
@@ -56,7 +61,7 @@ export default function FirstClickEditor({
       });
       return times;
     });
-  }, [study.tasks]);
+  }, [study.tasks, study.hasDisplayTime]);
 
   const addTask = async () => {
     if (!newTaskQuestion.trim()) return;
@@ -234,6 +239,21 @@ export default function FirstClickEditor({
     updateDisplayTime(taskId, clampedValue);
   };
 
+  const toggleDisplayTime = async (enabled: boolean) => {
+    setHasDisplayTime(enabled);
+    try {
+      await fetch(`/api/studies/${study.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ hasDisplayTime: enabled }),
+      });
+    } catch (error) {
+      console.error("Error updating display time setting:", error);
+      setHasDisplayTime(!enabled); // Revert on error
+      showToast("Failed to update setting", "error");
+    }
+  };
+
   const startEditing = (task: Task) => {
     setEditingTaskId(task.id);
     setEditQuestion(task.question);
@@ -250,19 +270,29 @@ export default function FirstClickEditor({
         </p>
 
         {/* Add new task */}
-        <div className="flex gap-2 mb-6 max-w-xl">
-          <TextInput
-            value={newTaskQuestion}
-            onChange={(e) => setNewTaskQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !isDisabled && addTask()}
-            placeholder="Where would you click to...?"
-            className="flex-1"
-            disabled={isDisabled}
-          />
-          <Button onClick={addTask} color="blue" disabled={isDisabled || !newTaskQuestion.trim()}>
-            <HiPlus className="mr-1 h-5 w-5" />
-            Add Task
-          </Button>
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex gap-2 flex-1 max-w-xl">
+            <TextInput
+              value={newTaskQuestion}
+              onChange={(e) => setNewTaskQuestion(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !isDisabled && addTask()}
+              placeholder="Where would you click to...?"
+              className="flex-1"
+              disabled={isDisabled}
+            />
+            <Button onClick={addTask} color="blue" disabled={isDisabled || !newTaskQuestion.trim()}>
+              <HiPlus className="mr-1 h-5 w-5" />
+              Add Task
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <ToggleSwitch
+              checked={hasDisplayTime}
+              onChange={toggleDisplayTime}
+              disabled={isDisabled}
+              label="Add display time for this study"
+            />
+          </div>
         </div>
 
         {/* Task list */}
@@ -396,27 +426,29 @@ export default function FirstClickEditor({
                         <HiTrash className="h-4 w-4 text-gray-500 hover:text-red-500" />
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Label htmlFor={`display-time-${task.id}`} className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                        Display time (seconds):
-                      </Label>
-                      <TextInput
-                        id={`display-time-${task.id}`}
-                        type="number"
-                        min={3}
-                        max={12}
-                        value={displayTimes[task.id] ?? task.displayTimeSeconds ?? 5}
-                        onChange={(e) => handleDisplayTimeChange(task.id, e.target.value)}
-                        onBlur={(e) => handleDisplayTimeBlur(task.id, e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleDisplayTimeBlur(task.id, (e.target as HTMLInputElement).value);
-                          }
-                        }}
-                        className="w-20"
-                        disabled={isDisabled}
-                      />
-                    </div>
+                    {hasDisplayTime && (
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor={`display-time-${task.id}`} className="text-sm text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                          Display time (seconds):
+                        </Label>
+                        <TextInput
+                          id={`display-time-${task.id}`}
+                          type="number"
+                          min={3}
+                          max={12}
+                          value={displayTimes[task.id] ?? task.displayTimeSeconds ?? 5}
+                          onChange={(e) => handleDisplayTimeChange(task.id, e.target.value)}
+                          onBlur={(e) => handleDisplayTimeBlur(task.id, e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleDisplayTimeBlur(task.id, (e.target as HTMLInputElement).value);
+                            }
+                          }}
+                          className="w-20"
+                          disabled={isDisabled}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

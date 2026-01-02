@@ -6,6 +6,7 @@ import { Card } from "flowbite-react";
 type Study = {
   id: string;
   imageUrl: string | null;
+  hasDisplayTime?: boolean;
   tasks: { id: string; question: string; imageUrl?: string | null; displayTimeSeconds?: number }[];
 };
 
@@ -30,6 +31,7 @@ export default function FirstClickStudy({
   const imageUrl = task?.imageUrl || study.imageUrl;
   const isLastTask = currentTaskIndex >= study.tasks.length - 1;
   const displayTimeSeconds = task?.displayTimeSeconds ?? 5;
+  const hasDisplayTime = study.hasDisplayTime ?? false;
 
   const submitAllResults = useCallback(async (allResults: Array<{ x: number; y: number; timeToClickMs: number; taskId: string }>) => {
     await fetch(`/api/studies/${study.id}/participants`, {
@@ -73,9 +75,9 @@ export default function FirstClickStudy({
     }, 1000);
   }, [clicked, task, displayTimeSeconds, currentTaskIndex, study.tasks.length, submitAllResults, results]);
 
-  // Timer effect - countdown only
+  // Timer effect - countdown only (only when hasDisplayTime is enabled)
   useEffect(() => {
-    if (clicked || !task) return;
+    if (!hasDisplayTime || clicked || !task) return;
 
     setTimeRemaining(displayTimeSeconds);
     const interval = setInterval(() => {
@@ -89,14 +91,14 @@ export default function FirstClickStudy({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [currentTaskIndex, clicked, task, displayTimeSeconds]);
+  }, [currentTaskIndex, clicked, task, displayTimeSeconds, hasDisplayTime]);
 
-  // Separate effect to handle auto-advance when timer reaches 0
+  // Separate effect to handle auto-advance when timer reaches 0 (only when hasDisplayTime is enabled)
   useEffect(() => {
-    if (timeRemaining === 0 && !clicked && task) {
+    if (hasDisplayTime && timeRemaining === 0 && !clicked && task) {
       handleAutoAdvance();
     }
-  }, [timeRemaining, clicked, task, handleAutoAdvance]);
+  }, [timeRemaining, clicked, task, handleAutoAdvance, hasDisplayTime]);
 
   const handleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     // Prevent double-calls using ref
@@ -185,7 +187,7 @@ export default function FirstClickStudy({
             Task {currentTaskIndex + 1} of {study.tasks.length}
           </div>
           <div className="flex items-center gap-4">
-            {!clicked && (
+            {hasDisplayTime && !clicked && (
               <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
                 {timeRemaining}s
               </div>
