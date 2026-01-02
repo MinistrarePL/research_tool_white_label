@@ -184,11 +184,18 @@ export default function FirstClickStudy({
           <div className="text-sm text-gray-500 dark:text-gray-400">
             Task {currentTaskIndex + 1} of {study.tasks.length}
           </div>
-          <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-            <div 
-              className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-              style={{ width: `${((currentTaskIndex + 1) / study.tasks.length) * 100}%` }}
-            ></div>
+          <div className="flex items-center gap-4">
+            {!clicked && (
+              <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {timeRemaining}s
+              </div>
+            )}
+            <div className="w-32 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div 
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${((currentTaskIndex + 1) / study.tasks.length) * 100}%` }}
+              ></div>
+            </div>
           </div>
         </div>
         <h2 className="text-xl font-semibold text-gray-900 dark:text-white text-center">
@@ -199,27 +206,20 @@ export default function FirstClickStudy({
         </p>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
+      <div className="flex-1 flex items-center justify-center p-4 overflow-hidden">
         <div
           ref={containerRef}
           onClick={handleClick}
-          className={`relative cursor-crosshair border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden shadow-lg max-w-full ${
+          className={`relative cursor-crosshair border-2 border-gray-300 dark:border-gray-600 rounded-lg overflow-hidden shadow-lg max-w-full max-h-full ${
             clicked ? "pointer-events-none" : ""
           }`}
         >
           <img
             src={imageUrl}
             alt="Test image"
-            className="max-w-full h-auto block"
+            className="max-w-full max-h-[calc(100vh-180px)] object-contain block"
             draggable={false}
           />
-          {!clicked && (
-            <div className="absolute bottom-4 right-4 bg-black/70 dark:bg-black/80 text-white rounded-lg px-4 py-2">
-              <div className="text-2xl font-bold">
-                {timeRemaining}s
-              </div>
-            </div>
-          )}
           {clicked && (
             <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
               <div className="bg-white dark:bg-gray-800 rounded-lg p-4 text-center">
