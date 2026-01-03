@@ -274,7 +274,7 @@ export default function AdminDashboard() {
               Are you sure you want to delete this study?
             </h3>
             <div className="flex justify-center gap-4">
-              <Button color="failure" onClick={deleteStudy}>
+              <Button color="gray" outline onClick={deleteStudy} className="!text-red-600 !border-red-600 hover:!bg-red-50 dark:!text-red-500 dark:!border-red-500 dark:hover:!bg-red-900/20">
                 Yes, delete
               </Button>
               <Button color="gray" onClick={() => setDeleteModal({ show: false, studyId: null })}>

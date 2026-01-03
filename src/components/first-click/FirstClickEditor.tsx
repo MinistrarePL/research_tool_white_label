@@ -476,7 +476,7 @@ export default function FirstClickEditor({
               Are you sure you want to delete this task?
             </h3>
             <div className="flex justify-center gap-4">
-              <Button color="failure" onClick={deleteTask}>
+              <Button color="gray" outline onClick={deleteTask} className="!text-red-600 !border-red-600 hover:!bg-red-50 dark:!text-red-500 dark:!border-red-500 dark:hover:!bg-red-900/20">
                 Yes, delete
               </Button>
               <Button color="gray" onClick={() => setDeleteModal({ show: false, taskId: null })}>
